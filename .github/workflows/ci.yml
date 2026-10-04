@@ -47,8 +47,14 @@ jobs:
         working-directory: hermes
         env:
           HERMES_HOME: ${{ runner.temp }}/hermes-home
-        run: .venv/bin/python -m hermes_cli.main plugins validate "$GITHUB_WORKSPACE/aux-ledger"
-      - name: End to end
+        run: |
+          .venv/bin/python -m hermes_cli.main plugins validate "$GITHUB_WORKSPACE/aux-ledger"
+          .venv/bin/python -m hermes_cli.main plugins validate "$GITHUB_WORKSPACE/stream-speed"
+      - name: End to end (aux-ledger)
         env:
           PYTHONPATH: ${{ github.workspace }}/hermes
         run: hermes/.venv/bin/python tests/e2e/hermes_e2e.py
+      - name: End to end (stream-speed)
+        env:
+          PYTHONPATH: ${{ github.workspace }}/hermes
+        run: hermes/.venv/bin/python tests/e2e/stream_speed_e2e.py

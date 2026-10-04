@@ -1,0 +1,9 @@
+name: stream-speed
+version: 1.0.0
+description: "Records how fast each model starts answering and how fast it writes (time to first text, characters per second) from the streaming hooks; /speed shows medians per model."
+author: olric3015
+requires_hermes: ">=0.21.5"
+provides_hooks:
+  - on_stream_start
+  - on_stream_delta
+  - on_stream_end

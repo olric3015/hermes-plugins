@@ -39,3 +39,13 @@ def speed_plugin():
 @pytest.fixture
 def timing(speed_plugin):
     return speed_plugin.timing
+
+
+@pytest.fixture
+def errors_plugin():
+    return _load_plugin("error-ledger")
+
+
+@pytest.fixture
+def errledger(errors_plugin):
+    return errors_plugin.ledger

@@ -1,0 +1,7 @@
+name: error-ledger
+version: 1.0.0
+description: "Local ledger of failed provider calls (rate limits, overloads, timeouts, ...): which model or provider they came from and why, shown by /errors."
+author: olric3015
+requires_hermes: ">=0.21.5"
+provides_hooks:
+  - api_request_error

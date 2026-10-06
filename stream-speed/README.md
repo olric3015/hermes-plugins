@@ -19,10 +19,18 @@ Requires Hermes 0.21.5 or newer. No API key, no configuration, no dependencies.
 ## Use
 
 ```
-/speed          last 24 hours, by model
-/speed all      everything recorded
-/speed clear    delete the record
+/speed             last 24 hours, by model
+/speed session     the most recent session that streamed a response
+/speed all         everything recorded
+/speed 7d          the last 7 days (any number of hours or days: 6h, 30d)
+/speed providers   add to any of the above to group by provider instead of model
+/speed clear       delete the record
 ```
+
+`/speed session` is the quick check after a conversation that felt slow. `/speed providers`
+compares providers that serve you the same model, and a time window (`/speed 6h`, `/speed 7d`)
+shows whether a slowdown is new. The record keeps its newest 5,000 streams, so a long window on
+a busy install reaches back only as far as those rows do.
 
 Example (`/speed all`, from the end-to-end test: two one-shot turns against a loopback provider
 that sends 16 characters every 0.15 s):
@@ -85,5 +93,11 @@ python -m pytest tests
 PYTHONPATH=<hermes checkout> python tests/e2e/stream_speed_e2e.py
 hermes plugins validate stream-speed
 ```
+
+## Changes
+
+- **1.1.0**: `/speed session`, time windows (`/speed 6h`, `/speed 7d`, any number of hours or
+  days) and grouping by provider (`/speed providers`). What is recorded did not change.
+- **1.0.0**: first release.
 
 MIT licensed.

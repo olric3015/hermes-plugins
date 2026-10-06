@@ -204,3 +204,69 @@ def test_end_hook_never_raises(speed_plugin, monkeypatch):
     monkeypatch.setattr(speed_plugin, "_data_path", boom)
     speed_plugin._on_stream_start(**_ev(session_id="x"))
     speed_plugin._on_stream_end(**_ev(session_id="x", final_text="", finished=True, error=None))
+
+
+@pytest.mark.parametrize("word, seconds", [
+    ("7d", 7 * 86400.0), ("1d", 86400.0), ("12h", 43200.0), ("9999h", 9999 * 3600.0),
+    ("0d", None), ("00h", None), ("d", None), ("7", None), ("7w", None), ("-1d", None),
+    ("1.5h", None), ("12345d", None), ("\u0667d", None), ("", None), ("day", None)])
+def test_span_words(timing, word, seconds):
+    assert timing.parse_span(word) == seconds
+
+
+def test_span_titles(timing):
+    assert [timing.span_title(w) for w in ("1h", "6h", "1d", "30d")] == [
+        "last 1 hour", "last 6 hours", "last 1 day", "last 30 days"]
+
+
+def _srow(model, session, provider, ts):
+    return dict(_row(model, 1.0, 2.0, 10, ts=ts), session_id=session, provider=provider)
+
+
+def test_select_span_and_session(timing):
+    rows = [_srow("m-week", "s1", "p1", NOW - 5 * timing.DAY_SECONDS),
+            _srow("m-days", "s2", "p1", NOW - 2 * timing.DAY_SECONDS),
+            _srow("m-a", "s3", "p2", NOW - 90), _srow("m-b", "", "p2", NOW - 60),
+            _srow("m-c", "s3", "p2", NOW - 30)]
+    assert [r["model"] for r in timing.select(rows, "day", NOW, 3 * timing.DAY_SECONDS)] == ["m-days", "m-a", "m-b", "m-c"]
+    assert [r["model"] for r in timing.select(rows, "day", NOW, 3600.0)] == ["m-a", "m-b", "m-c"]
+    assert len(timing.select(rows, "all", NOW, 60.0)) == 5
+    # The latest session is the newest row that names one; rows without a session never match.
+    assert [r["model"] for r in timing.select(rows, "session", NOW, 1.0)] == ["m-a", "m-c"]
+    assert timing.select([rows[3]], "session", NOW) == []
+    assert timing.select([_row("legacy", 1.0, 2.0, 10)], "session", NOW) == []
+
+
+def test_summary_by_provider(timing):
+    rows = [dict(_row("m-fast", 0.4, 2.4, 400), provider="p1"), dict(_row("m-slow", 2.0, 4.0, 200), provider="p1"),
+            dict(_row("m-fast", 1.0, 3.0, 100), provider="p2"), _row("m-legacy", 3.0, 5.0, 100)]
+    lines = timing.summarize(rows, title="x", by="provider").splitlines()
+    assert lines[2].split() == ["provider", "streams", "failed", "first", "text", "p90", "chars/s"]
+    assert lines[3].split() == ["p1", "2", "0", "1.20s", "2.00s", "150"]
+    assert lines[4].split()[:4] == ["p2", "1", "0", "1.00s"]
+    # A row recorded without a provider is grouped, not dropped.
+    assert lines[5].split()[:4] == ["unknown", "1", "0", "3.00s"]
+    assert timing.summarize(rows, title="x").splitlines()[2].split()[0] == "model"
+
+
+def test_command_windows_and_provider_grouping(speed_plugin, tmp_path, monkeypatch):
+    path = tmp_path / speed_plugin.timing.FILENAME
+    monkeypatch.setattr(speed_plugin, "_data_path", lambda: path)
+    ctx = _Ctx()
+    speed_plugin.register(ctx)
+    speed, now = ctx.commands["speed"], time.time()
+    for row in (_srow("m-week", "old", "p1", now - 5 * 86400), _srow("m-today", "new", "p2", now - 30)):
+        speed_plugin.timing.append(path, row)
+    assert [line.split()[0] for line in speed("").splitlines()[3:]] == ["m-today"]
+    week = speed("7d").splitlines()
+    assert week[0] == "Streaming speed, last 7 days:" and sorted(line.split()[0] for line in week[3:5]) == ["m-today", "m-week"]
+    assert "m-week" not in speed("3d") and speed("12h").splitlines()[0] == "Streaming speed, last 12 hours:"
+    session = speed("session").splitlines()
+    assert session[0] == "Streaming speed, latest session:" and [line.split()[0] for line in session[3:]] == ["m-today"]
+    providers = speed("7d providers").splitlines()
+    assert providers[2].split()[0] == "provider" and sorted(line.split()[0] for line in providers[3:5]) == ["p1", "p2"]
+    assert speed("all models").splitlines()[2].split()[0] == "model"
+    assert speed("session 1h").splitlines()[0] == "Streaming speed, latest session:"
+    assert len(speed("all 1h").splitlines()) == 5
+    assert speed("0d").startswith("Unknown option: 0d") and speed("7w").startswith("Unknown option: 7w")
+    assert "/speed 7d" in speed("help") and "/speed session" in speed("help") and "/speed providers" in speed("help")

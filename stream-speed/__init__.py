@@ -24,10 +24,16 @@ _EXIT_DRAIN_SECONDS = 1.0
 _HELP = """\
 /speed: how fast each model starts answering and how fast it writes
 
-  /speed          last 24 hours, by model
-  /speed all      everything recorded
-  /speed clear    delete the record
+  /speed             last 24 hours, by model
+  /speed session     the most recent session that streamed a response
+  /speed all         everything recorded
+  /speed 7d          the last 7 days (any number of hours or days: 6h, 30d)
+  /speed providers   add to any of the above to group by provider instead of model
+  /speed clear       delete the record
 """
+
+_TITLES = {"day": "last 24 hours", "session": "latest session", "all": "all recorded"}
+_GROUP_WORDS = {"models": "model", "providers": "provider"}
 
 _tracker = timing.Tracker()
 
@@ -67,21 +73,27 @@ def _drain_at_exit() -> None:
 
 def _handle_speed(raw_args: str = "") -> Optional[str]:
     words = (raw_args or "").lower().split()
-    unknown = [w for w in words if w not in {"all", "clear", "day"}]
+    known = {"session", "all", "clear", "day", *_GROUP_WORDS}
+    spans = [w for w in words if timing.parse_span(w)]
+    unknown = [w for w in words if w not in known and w not in spans]
     if unknown:
         return _HELP if unknown[0] in {"help", "-h", "--help"} else f"Unknown option: {unknown[0]}\n\n{_HELP}"
     path = _data_path()
     if "clear" in words:
         return f"stream-speed: deleted {timing.clear(path)} recorded stream(s)."
-    window = "all" if "all" in words else "day"
-    rows = timing.select(timing.read(path), window, time.time())
-    return timing.summarize(rows, title="all recorded" if window == "all" else "last 24 hours")
+    window = "session" if "session" in words else "all" if "all" in words else "day"
+    title, span = _TITLES[window], timing.DAY_SECONDS
+    if window == "day" and spans:
+        title, span = timing.span_title(spans[0]), timing.parse_span(spans[0])
+    by = next((_GROUP_WORDS[w] for w in words if w in _GROUP_WORDS), "model")
+    rows = timing.select(timing.read(path), window, time.time(), span)
+    return timing.summarize(rows, title=title, by=by)
 
 
 def register(ctx) -> None:
     ctx.register_hook("on_stream_start", _on_stream_start)
     ctx.register_hook("on_stream_delta", _on_stream_delta)
     ctx.register_hook("on_stream_end", _on_stream_end)
-    ctx.register_command("speed", handler=_handle_speed, args_hint="[all] | clear",
+    ctx.register_command("speed", handler=_handle_speed, args_hint="[session|all|7d] [providers] | clear",
                          description="Show how fast each model starts answering and how fast it writes.")
     atexit.register(_drain_at_exit)

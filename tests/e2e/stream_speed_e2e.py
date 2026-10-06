@@ -75,6 +75,16 @@ def main() -> int:
     report = speed("all")
     print(report)
     assert report.splitlines()[3].split()[:3] == ["fake-model", "2", "0"]
+    week = speed("7d").splitlines()
+    assert week[0] == "Streaming speed, last 7 days:" and week[3:] == report.splitlines()[3:]
+    by_provider = speed("all providers").splitlines()
+    print("\n".join(by_provider))
+    assert by_provider[2].split()[0] == "provider"
+    assert {line.split()[0] for line in by_provider[3:]} == {r["provider"] or "unknown" for r in rows}
+    # Each one-shot turn is its own session, so the latest session holds exactly the last stream.
+    assert rows[-1]["session_id"] and rows[0]["session_id"] != rows[-1]["session_id"]
+    session = speed("session").splitlines()
+    assert session[0] == "Streaming speed, latest session:" and session[3].split()[:3] == ["fake-model", "1", "0"]
     assert speed("clear") == "stream-speed: deleted 2 recorded stream(s)." and not data.exists()
     print("E2E OK")
     return 0

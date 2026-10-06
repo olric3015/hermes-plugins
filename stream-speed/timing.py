@@ -21,6 +21,7 @@ FILENAME = "streams.jsonl"
 MAX_BYTES = 2_000_000
 KEEP_LINES = 5000
 DAY_SECONDS = 86400.0
+_SPAN_UNITS = {"h": 3600.0, "d": DAY_SECONDS}
 MAX_OPEN = 256
 OPEN_TTL_SECONDS = 3600.0
 # How long the end event waits for a first-delta event still queued on the other worker.
@@ -157,10 +158,36 @@ def clear(path: Path) -> int:
     return count
 
 
-def select(rows: List[Dict[str, Any]], window: str, now: float) -> List[Dict[str, Any]]:
+def parse_span(word: str) -> Optional[float]:
+    """Seconds for a time-window word such as ``12h`` or ``7d``; None when ``word`` is not one."""
+    number, unit = word[:-1], word[-1:]
+    if unit not in _SPAN_UNITS or not (number.isascii() and number.isdigit()) or len(number) > 4:
+        return None
+    return int(number) * _SPAN_UNITS[unit] or None
+
+
+def span_title(word: str) -> str:
+    count, unit = int(word[:-1]), {"h": "hour", "d": "day"}[word[-1]]
+    return f"last {count} {unit}{'' if count == 1 else 's'}"
+
+
+def last_session_id(rows: List[Dict[str, Any]]) -> str:
+    """The session of the newest row that carries one ("" when none does)."""
+    found = ""
+    for row in rows:
+        if row.get("session_id"):
+            found = str(row["session_id"])
+    return found
+
+
+def select(rows: List[Dict[str, Any]], window: str, now: float,
+           span: float = DAY_SECONDS) -> List[Dict[str, Any]]:
     if window == "all":
         return list(rows)
-    return [r for r in rows if float(r.get("ts") or 0.0) >= now - DAY_SECONDS]
+    if window == "session":
+        session_id = last_session_id(rows)
+        return [r for r in rows if session_id and r.get("session_id") == session_id]
+    return [r for r in rows if float(r.get("ts") or 0.0) >= now - span]
 
 
 def _percentile(values: List[float], fraction: float) -> float:
@@ -190,23 +217,23 @@ def _table(header: List[str], body: List[List[str]]) -> List[str]:
     return out
 
 
-def summarize(rows: List[Dict[str, Any]], *, title: str) -> str:
-    """Per-model stream count, failures, median and p90 time to first text, median chars/s."""
+def summarize(rows: List[Dict[str, Any]], *, title: str, by: str = "model") -> str:
+    """Per-``by`` stream count, failures, median and p90 time to first text, median chars/s."""
     if not rows:
         return f"Streaming speed, {title}: no streams recorded."
     groups: Dict[str, List[Dict[str, Any]]] = {}
     for row in rows:
-        groups.setdefault(str(row.get("model") or "unknown"), []).append(row)
+        groups.setdefault(str(row.get(by) or "unknown"), []).append(row)
     body = []
-    for model, items in sorted(groups.items(), key=lambda kv: (-len(kv[1]), kv[0])):
+    for name, items in sorted(groups.items(), key=lambda kv: (-len(kv[1]), kv[0])):
         firsts = [float(r["ttft_s"]) for r in items if r.get("ttft_s") is not None]
         rates = [rate for rate in (_rate(r) for r in items) if rate is not None]
-        body.append([model, str(len(items)), str(sum(1 for r in items if r.get("failed") or not r.get("finished"))),
+        body.append([name, str(len(items)), str(sum(1 for r in items if r.get("failed") or not r.get("finished"))),
                      _seconds(median(firsts) if firsts else None),
                      _seconds(_percentile(firsts, 0.9) if firsts else None),
                      f"{median(rates):.0f}" if rates else "-"])
     lines = [f"Streaming speed, {title}:", ""]
-    lines += _table(["model", "streams", "failed", "first text", "p90", "chars/s"], body)
+    lines += _table([by, "streams", "failed", "first text", "p90", "chars/s"], body)
     silent = sum(1 for r in rows if r.get("ttft_s") is None)
     if silent:
         lines += ["", f"{silent} stream(s) carried no text (tool calls only, or failed before any)."]

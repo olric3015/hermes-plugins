@@ -19,6 +19,8 @@ FILENAME = "errors.jsonl"
 MAX_BYTES = 2_000_000
 KEEP_LINES = 5000
 DAY_SECONDS = 86400.0
+RECENT_ROWS = 10
+_SPAN_UNITS = {"h": 3600.0, "d": DAY_SECONDS}
 
 _lock = threading.Lock()
 
@@ -120,13 +122,49 @@ def last_session_id(rows: Iterable[Dict[str, Any]]) -> str:
     return found
 
 
-def select(rows: List[Dict[str, Any]], window: str, now: float) -> List[Dict[str, Any]]:
+def parse_span(word: str) -> Optional[float]:
+    """Seconds for a time-window word such as ``12h`` or ``7d``; None when ``word`` is not one."""
+    number, unit = word[:-1], word[-1:]
+    if unit not in _SPAN_UNITS or not (number.isascii() and number.isdigit()) or len(number) > 4:
+        return None
+    return int(number) * _SPAN_UNITS[unit] or None
+
+
+def span_title(word: str) -> str:
+    count, unit = int(word[:-1]), {"h": "hour", "d": "day"}[word[-1]]
+    return f"last {count} {unit}{'' if count == 1 else 's'}"
+
+
+def select(rows: List[Dict[str, Any]], window: str, now: float,
+           span: float = DAY_SECONDS) -> List[Dict[str, Any]]:
     if window == "all":
         return list(rows)
     if window == "session":
         session_id = last_session_id(rows)
         return [r for r in rows if session_id and r.get("session_id") == session_id]
-    return [r for r in rows if float(r.get("ts") or 0.0) >= now - DAY_SECONDS]
+    return [r for r in rows if float(r.get("ts") or 0.0) >= now - span]
+
+
+def _age(seconds: float) -> str:
+    seconds = max(0.0, seconds)
+    for size, unit in ((DAY_SECONDS, "d"), (3600.0, "h"), (60.0, "m")):
+        if seconds >= size:
+            return f"{int(seconds // size)}{unit} ago"
+    return f"{int(seconds)}s ago"
+
+
+def recent(rows: List[Dict[str, Any]], now: float, *, title: str, limit: int = RECENT_ROWS) -> str:
+    """The newest ``limit`` failed attempts of ``rows``, newest first, one line each."""
+    if not rows:
+        return f"Provider errors, {title}: none recorded."
+    newest = rows[-limit:][::-1]
+    body = [[_age(now - float(r.get("ts") or 0.0)), str(r.get("model") or "unknown"),
+             str(r.get("provider") or "unknown"), str(r.get("reason") or "unknown"),
+             str(r["status"]) if isinstance(r.get("status"), int) else "-",
+             {True: "yes", False: "no"}.get(r.get("retryable"), "-")] for r in newest]
+    lines = [f"Provider errors, {title}, newest {len(newest)} of {len(rows)}:", ""]
+    lines += _table(["when", "model", "provider", "reason", "status", "retryable"], body)
+    return "\n".join(lines)
 
 
 def _table(header: List[str], body: List[List[str]]) -> List[str]:

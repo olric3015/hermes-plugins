@@ -162,3 +162,86 @@ def test_hook_never_raises(errors_plugin, monkeypatch):
 
     monkeypatch.setattr(errors_plugin, "_ledger_path", boom)
     errors_plugin._on_api_request_error(**_payload())
+
+
+@pytest.mark.parametrize("word, seconds", [
+    ("7d", 7 * 86400.0), ("1d", 86400.0), ("12h", 43200.0), ("9999h", 9999 * 3600.0),
+    ("0d", None), ("00h", None), ("d", None), ("7", None), ("7w", None), ("-1d", None),
+    ("1.5h", None), ("12345d", None), ("\u0667d", None), ("", None), ("day", None)])
+def test_span_words(errledger, word, seconds):
+    assert errledger.parse_span(word) == seconds
+
+
+def test_span_titles(errledger):
+    assert [errledger.span_title(w) for w in ("1h", "6h", "1d", "30d")] == [
+        "last 1 hour", "last 6 hours", "last 1 day", "last 30 days"]
+
+
+def test_select_span(errledger):
+    rows = [_row("a", "timeout", None, ts=NOW - 5 * 86400), _row("b", "timeout", None, ts=NOW - 2 * 86400),
+            _row("c", "timeout", None, ts=NOW - 60)]
+    assert [r["model"] for r in errledger.select(rows, "day", NOW, 3 * 86400.0)] == ["b", "c"]
+    assert [r["model"] for r in errledger.select(rows, "day", NOW, 3600.0)] == ["c"]
+    # The span never narrows the other two windows.
+    assert len(errledger.select(rows, "all", NOW, 60.0)) == 3
+    assert len(errledger.select(rows, "session", NOW, 1.0)) == 3
+
+
+def test_recent_lists_newest_first(errledger):
+    rows = [_row("m-old", "timeout", None, retryable=None, ts=NOW - 3 * 86400 - 5),
+            _row("m-mid", "overloaded", 529, provider="p2", ts=NOW - 2 * 3600 - 1),
+            _row("m-new", "rate_limit", 429, ts=NOW - 125),
+            _row("m-now", "context_overflow", 400, retryable=False, ts=NOW - 7)]
+    lines = errledger.recent(rows, NOW, title="all recorded").splitlines()
+    assert lines[0] == "Provider errors, all recorded, newest 4 of 4:"
+    assert lines[2].split() == ["when", "model", "provider", "reason", "status", "retryable"]
+    assert lines[3].split() == ["7s", "ago", "m-now", "p1", "context_overflow", "400", "no"]
+    assert lines[4].split() == ["2m", "ago", "m-new", "p1", "rate_limit", "429", "yes"]
+    assert lines[5].split() == ["2h", "ago", "m-mid", "p2", "overloaded", "529", "yes"]
+    assert lines[6].split() == ["3d", "ago", "m-old", "p1", "timeout", "-", "-"]
+    limited = errledger.recent(rows, NOW, title="x", limit=2).splitlines()
+    assert limited[0] == "Provider errors, x, newest 2 of 4:" and len(limited) == 5
+    assert [line.split()[2] for line in limited[3:]] == ["m-now", "m-new"]
+    assert errledger.recent([], NOW, title="last 7 days") == "Provider errors, last 7 days: none recorded."
+    # A clock that moved backwards, or a row without a time, is never a negative age.
+    assert errledger.recent([_row("m", "x", None, ts=NOW + 50)], NOW, title="x").splitlines()[3].startswith("0s ago")
+
+
+def test_default_recent_limit_is_ten(errledger):
+    rows = [_row(f"m{i}", "timeout", None, ts=NOW - 100 + i) for i in range(14)]
+    lines = errledger.recent(rows, NOW, title="x").splitlines()
+    assert lines[0] == "Provider errors, x, newest 10 of 14:"
+    assert [line.split()[2] for line in lines[3:]] == [f"m{i}" for i in range(13, 3, -1)]
+
+
+def test_command_time_window_and_recent(wired):
+    ctx, path = wired
+    hook, errors = ctx.hooks["api_request_error"], ctx.commands["errors"]
+    now = time.time()
+    hook(**_payload(ended_at=now - 5 * 86400, model="m-week", session_id="old"))
+    hook(**_payload(ended_at=now - 30, model="m-today", status_code=529, reason="overloaded"))
+    assert [line.split()[0] for line in errors("").splitlines()[3:4]] == ["m-today"]
+    week = errors("7d").splitlines()
+    assert week[0] == "Provider errors, last 7 days:"
+    assert sorted(line.split()[0] for line in week[3:5]) == ["m-today", "m-week"]
+    assert errors("3d").splitlines()[0] == "Provider errors, last 3 days:"
+    assert "m-week" not in errors("3d") and "m-week" not in errors("1h")
+    assert errors("7d providers").splitlines()[3].split()[:2] == ["custom", "2"]
+    listing = errors("7d recent").splitlines()
+    assert listing[0] == "Provider errors, last 7 days, newest 2 of 2:"
+    assert listing[3].split()[2:] == ["m-today", "custom", "overloaded", "529", "yes"]
+    assert listing[4].split()[:3] == ["5d", "ago", "m-week"]
+    assert errors("recent").splitlines()[0] == "Provider errors, last 24 hours, newest 1 of 1:"
+    # session and all keep their meaning when a span is typed next to them.
+    assert errors("session 1h").splitlines()[0] == "Provider errors, latest session:"
+    assert errors("all 1h recent").splitlines()[0] == "Provider errors, all recorded, newest 2 of 2:"
+    assert errors("0d").startswith("Unknown option: 0d") and errors("7w").startswith("Unknown option: 7w")
+    assert "/errors 7d" in errors("help") and "/errors recent" in errors("help")
+
+
+@pytest.mark.parametrize("seconds, shown", [
+    (0, "0s ago"), (59.9, "59s ago"), (60, "1m ago"), (3599, "59m ago"), (3600, "1h ago"),
+    (86399, "23h ago"), (86400, "1d ago"), (40 * 86400, "40d ago")])
+def test_recent_ages_change_unit_at_the_boundary(errledger, seconds, shown):
+    line = errledger.recent([_row("m", "timeout", None, ts=NOW - seconds)], NOW, title="x").splitlines()[3]
+    assert line.startswith(shown + " ")

@@ -25,8 +25,10 @@ _HELP = """\
   /errors             last 24 hours, by model
   /errors session     the most recent session that had a failed call
   /errors all         everything in the ledger
+  /errors 7d          the last 7 days (any number of hours or days: 6h, 30d)
   /errors providers   add to any of the above to group by provider
   /errors reasons     add to any of the above to group by cause
+  /errors recent      add to any of the above to list the newest 10 failures instead
   /errors clear       delete the ledger
 """
 
@@ -51,21 +53,28 @@ def _on_api_request_error(**payload: Any) -> None:
 
 def _handle_errors(raw_args: str = "") -> Optional[str]:
     words = (raw_args or "").lower().split()
-    known = {"session", "all", "day", "clear", *_GROUP_WORDS}
-    unknown = [w for w in words if w not in known]
+    known = {"session", "all", "day", "clear", "recent", *_GROUP_WORDS}
+    spans = [w for w in words if ledger.parse_span(w)]
+    unknown = [w for w in words if w not in known and w not in spans]
     if unknown:
         return _HELP if unknown[0] in {"help", "-h", "--help"} else f"Unknown option: {unknown[0]}\n\n{_HELP}"
     path = _ledger_path()
     if "clear" in words:
         return f"error-ledger: deleted {ledger.clear(path)} recorded error(s)."
     window = "session" if "session" in words else "all" if "all" in words else "day"
+    title, span = _TITLES[window], ledger.DAY_SECONDS
+    if window == "day" and spans:
+        title, span = ledger.span_title(spans[0]), ledger.parse_span(spans[0])
+    now = time.time()
+    rows = ledger.select(ledger.read(path), window, now, span)
+    if "recent" in words:
+        return ledger.recent(rows, now, title=title)
     by = next((_GROUP_WORDS[w] for w in words if w in _GROUP_WORDS), "model")
-    rows = ledger.select(ledger.read(path), window, time.time())
-    return ledger.summarize(rows, title=_TITLES[window], by=by)
+    return ledger.summarize(rows, title=title, by=by)
 
 
 def register(ctx) -> None:
     ctx.register_hook("api_request_error", _on_api_request_error)
     ctx.register_command("errors", handler=_handle_errors,
-                         args_hint="[session|all] [providers|reasons] | clear",
+                         args_hint="[session|all|7d] [providers|reasons|recent] | clear",
                          description="Show which provider calls failed (rate limits, overloads, ...) and why.")

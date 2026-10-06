@@ -23,8 +23,10 @@ Requires Hermes 0.21.5 or newer. No API key, no configuration, no dependencies.
 /errors             last 24 hours, by model
 /errors session     the most recent session that had a failed call
 /errors all         everything in the ledger
+/errors 7d          the last 7 days (any number of hours or days: 6h, 30d)
 /errors providers   add to any of the above to group by provider
 /errors reasons     add to any of the above to group by cause
+/errors recent      add to any of the above to list the newest 10 failures instead
 /errors clear       delete the ledger
 ```
 
@@ -47,6 +49,23 @@ One row per failed attempt Hermes reported; the retry after it may have succeede
   `timeout`, `context_overflow`, `auth`, `billing`, ...), with how often it occurred. Grouped
   by `reasons`, this column shows the model it happened on most instead.
 - **top status** is the most common HTTP status, when the failure had one.
+
+The tables say how often; `/errors recent` says when. It lists the newest ten failures of the
+chosen window, newest first, so you can tell whether a provider is still failing or stopped an
+hour ago:
+
+```
+Provider errors, last 24 hours, newest 3 of 41:
+
+when       model  provider      reason  status  retryable
+40s ago  m-large    custom  rate_limit     429        yes
+2m ago   m-large    custom  rate_limit     429        yes
+3h ago   m-small     other  overloaded     529        yes
+```
+
+A time window counts back from now (`/errors 6h`, `/errors 7d reasons`, `/errors 30d recent`).
+The ledger keeps its newest 5,000 rows, so a long window on a busy install reaches back only as
+far as those rows do.
 
 ## What it does not see
 
@@ -87,5 +106,12 @@ python -m pytest tests                                          # unit tests, no
 PYTHONPATH=<hermes checkout> python tests/e2e/error_ledger_e2e.py   # real `hermes chat` turns
 hermes plugins validate error-ledger
 ```
+
+## Changes
+
+- **1.1.0**: time windows (`/errors 6h`, `/errors 7d`, any number of hours or days) and
+  `/errors recent`, the newest ten failures with how long ago each happened. What is recorded
+  did not change.
+- **1.0.0**: first release.
 
 MIT licensed.

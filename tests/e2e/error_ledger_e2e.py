@@ -87,6 +87,15 @@ def main() -> int:
     session = errors("session")
     assert session.splitlines()[3].split()[:2] == ["fake-model", str(last_session)]
     assert last_reason in session and (first_reason == last_reason or first_reason not in session)
+    week = errors("7d").splitlines()
+    assert week[0] == "Provider errors, last 7 days:" and week[3:] == report.splitlines()[3:]
+    listing = errors("all recent").splitlines()
+    print("\n".join(listing))
+    assert listing[0] == f"Provider errors, all recorded, newest {len(rows)} of {len(rows)}:"
+    newest = rows[-1]
+    assert listing[3].split()[2:] == ["fake-model", newest["provider"], newest["reason"], str(newest["status"]),
+                                      {True: "yes", False: "no"}.get(newest["retryable"], "-")]
+    assert listing[3].split()[1] == "ago" and len(listing) == 3 + len(rows)
     assert errors("clear") == f"error-ledger: deleted {len(rows)} recorded error(s)." and not data.exists()
     print("E2E OK")
     return 0

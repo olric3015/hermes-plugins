@@ -18,6 +18,7 @@ FILENAME = "calls.jsonl"
 MAX_BYTES = 2_000_000
 KEEP_LINES = 5000
 DAY_SECONDS = 86400.0
+_SPAN_UNITS = {"h": 3600.0, "d": DAY_SECONDS}
 
 _TOKEN_FIELDS = ("input_tokens", "output_tokens", "cache_read_tokens", "cache_write_tokens",
                  "reasoning_tokens")
@@ -114,13 +115,27 @@ def last_session_id(rows: Iterable[Dict[str, Any]]) -> str:
     return found
 
 
-def select(rows: List[Dict[str, Any]], window: str, now: float) -> List[Dict[str, Any]]:
+def parse_span(word: str) -> Optional[float]:
+    """Seconds for a time-window word such as ``12h`` or ``7d``; None when ``word`` is not one."""
+    number, unit = word[:-1], word[-1:]
+    if unit not in _SPAN_UNITS or not (number.isascii() and number.isdigit()) or len(number) > 4:
+        return None
+    return int(number) * _SPAN_UNITS[unit] or None
+
+
+def span_title(word: str) -> str:
+    count, unit = int(word[:-1]), {"h": "hour", "d": "day"}[word[-1]]
+    return f"last {count} {unit}{'' if count == 1 else 's'}"
+
+
+def select(rows: List[Dict[str, Any]], window: str, now: float,
+           span: float = DAY_SECONDS) -> List[Dict[str, Any]]:
     if window == "all":
         return list(rows)
     if window == "session":
         session_id = last_session_id(rows)
         return [r for r in rows if session_id and r.get("session_id") == session_id]
-    return [r for r in rows if float(r.get("ts") or 0.0) >= now - DAY_SECONDS]
+    return [r for r in rows if float(r.get("ts") or 0.0) >= now - span]
 
 
 def _duration(seconds: float) -> str:
@@ -159,7 +174,7 @@ def summarize(rows: List[Dict[str, Any]], *, title: str, by: str = "aux_task") -
         return [name, f"{int(g['calls'])}", f"{int(g['failed'])}", f"{int(g['in']):,}",
                 f"{int(g['out']):,}", _duration(g["secs"])]
 
-    label = "model" if by == "model" else "task"
+    label = "task" if by == "aux_task" else by
     body = [cells(name, g) for name, g in ordered] + [cells("total", total)]
     lines = [f"Auxiliary LLM calls, {title}:", ""]
     lines += _table([label, "calls", "failed", "input", "output", "time"], body)

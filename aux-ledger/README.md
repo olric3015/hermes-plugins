@@ -24,9 +24,15 @@ no configuration, no dependencies.
 /aux             last 24 hours, by task
 /aux session     the most recent session that made an auxiliary call
 /aux all         everything in the ledger
+/aux 7d          the last 7 days (any number of hours or days: 6h, 30d)
 /aux models      add to any of the above to group by model instead of task
+/aux providers   add to any of the above to group by provider instead of task
 /aux clear       delete the ledger
 ```
+
+A time window counts back from now, so `/aux 7d` answers "what did the background calls cost
+this week" and `/aux 7d providers` splits that bill by provider. The ledger keeps its newest
+5,000 calls, so a long window on a busy install reaches back only as far as those rows do.
 
 Example (`/aux all`, from the end-to-end test: one titling call, one compression call that
 succeeded and three attempts of one that failed):
@@ -78,5 +84,11 @@ python -m pytest tests                                   # unit tests, no Hermes
 PYTHONPATH=<hermes checkout> python tests/e2e/hermes_e2e.py   # real loader + real auxiliary client
 hermes plugins validate aux-ledger
 ```
+
+## Changes
+
+- **1.1.0**: time windows (`/aux 6h`, `/aux 7d`, any number of hours or days) and grouping by
+  provider (`/aux providers`). What is recorded did not change.
+- **1.0.0**: first release.
 
 MIT licensed.

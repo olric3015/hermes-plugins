@@ -114,3 +114,38 @@ def test_clear_reports_and_removes(ledger, tmp_path):
         ledger.append(path, ledger.build_row(_payload()))
     assert ledger.clear(path) == 3 and not path.exists()
     assert ledger.clear(path) == 0
+
+
+@pytest.mark.parametrize("word, seconds", [
+    ("7d", 7 * 86400.0), ("1d", 86400.0), ("12h", 43200.0), ("9999h", 9999 * 3600.0),
+    ("0d", None), ("00h", None), ("d", None), ("7", None), ("7w", None), ("-1d", None),
+    ("1.5h", None), ("12345d", None), ("\u0667d", None), ("", None), ("day", None)])
+def test_span_words(ledger, word, seconds):
+    assert ledger.parse_span(word) == seconds
+
+
+def test_span_titles(ledger):
+    assert [ledger.span_title(w) for w in ("1h", "6h", "1d", "30d")] == [
+        "last 1 hour", "last 6 hours", "last 1 day", "last 30 days"]
+
+
+def test_select_span(ledger):
+    rows = [ledger.build_row(_payload(session_id="w", ended_at=NOW - 5 * ledger.DAY_SECONDS)),
+            ledger.build_row(_payload(session_id="d", ended_at=NOW - 2 * ledger.DAY_SECONDS)),
+            ledger.build_row(_payload(session_id="n", ended_at=NOW - 60))]
+    assert [r["session_id"] for r in ledger.select(rows, "day", NOW, 3 * ledger.DAY_SECONDS)] == ["d", "n"]
+    assert [r["session_id"] for r in ledger.select(rows, "day", NOW, 3600.0)] == ["n"]
+    assert len(ledger.select(rows, "all", NOW, 60.0)) == 3
+    assert [r["session_id"] for r in ledger.select(rows, "session", NOW, 1.0)] == ["n"]
+
+
+def test_summary_by_provider(ledger):
+    rows = [ledger.build_row(_payload(provider="openrouter")),
+            ledger.build_row(_payload(provider="openrouter", aux_task="vision")),
+            ledger.build_row(_payload(provider="", usage={"input_tokens": 5, "output_tokens": 1}))]
+    lines = ledger.summarize(rows, title="x", by="provider").splitlines()
+    assert lines[2].split()[0] == "provider"
+    assert lines[3].split()[:3] == ["openrouter", "2", "0"]
+    # A call that reported no provider is grouped, not dropped.
+    assert lines[4].split()[:4] == ["unknown", "1", "0", "5"]
+    assert lines[5].split()[:2] == ["total", "3"]

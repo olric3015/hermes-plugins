@@ -66,3 +66,25 @@ def test_hook_never_raises(plugin, monkeypatch):
 
     monkeypatch.setattr(plugin, "_ledger_path", boom)
     plugin._on_post_auxiliary_call(aux_task="vision")
+
+
+def test_command_time_window_and_provider_grouping(wired):
+    hook, aux = wired.hooks["post_auxiliary_call"], wired.commands["aux"]
+    now = time.time()
+    _call(hook, ended_at=now - 5 * 86400, aux_task="vision", provider="openrouter", session_id="old")
+    _call(hook, ended_at=now - 30)
+    assert [line.split()[0] for line in aux("").splitlines()[3:5]] == ["compression", "total"]
+    week = aux("7d").splitlines()
+    assert week[0] == "Auxiliary LLM calls, last 7 days:"
+    assert sorted(line.split()[0] for line in week[3:5]) == ["compression", "vision"] and week[5].split()[:2] == ["total", "2"]
+    assert "vision" not in aux("3d") and aux("3d").splitlines()[0] == "Auxiliary LLM calls, last 3 days:"
+    assert aux("12h").splitlines()[0] == "Auxiliary LLM calls, last 12 hours:"
+    providers = aux("7d providers").splitlines()
+    assert providers[2].split()[0] == "provider"
+    assert sorted(line.split()[0] for line in providers[3:5]) == ["custom", "openrouter"]
+    assert aux("all models").splitlines()[2].split()[0] == "model"
+    # session and all keep their meaning when a span is typed next to them.
+    assert aux("session 1h").splitlines()[0] == "Auxiliary LLM calls, latest session:"
+    assert aux("all 1h").splitlines()[5].split()[:2] == ["total", "2"]
+    assert aux("0d").startswith("Unknown option: 0d") and aux("7w").startswith("Unknown option: 7w")
+    assert "/aux 7d" in aux("help") and "/aux providers" in aux("help")

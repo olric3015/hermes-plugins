@@ -75,6 +75,13 @@ def main() -> int:
         lines = report.splitlines()
         assert lines[3].split()[:5] == ["compression", str(len(rows) - 1), str(len(failed)), "1,000", "50"]
         assert lines[4].split()[:5] == ["title_generation", "1", "0", "321", "12"]
+        week = aux_command("7d").splitlines()
+        assert week[0] == "Auxiliary LLM calls, last 7 days:" and week[3:] == lines[3:]
+        by_provider = aux_command("all providers").splitlines()
+        print("\n".join(by_provider))
+        named = [line.split()[0] for line in by_provider[3:by_provider.index("", 3)]]
+        assert by_provider[2].split()[0] == "provider"
+        assert set(named) == {r["provider"] or "unknown" for r in rows} | {"total"}
         assert aux_command("clear") == f"aux-ledger: deleted {len(rows)} recorded call(s)."
         assert not ledger_file.exists()
     print("E2E OK")

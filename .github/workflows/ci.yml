@@ -51,6 +51,7 @@ jobs:
           .venv/bin/python -m hermes_cli.main plugins validate "$GITHUB_WORKSPACE/aux-ledger"
           .venv/bin/python -m hermes_cli.main plugins validate "$GITHUB_WORKSPACE/stream-speed"
           .venv/bin/python -m hermes_cli.main plugins validate "$GITHUB_WORKSPACE/error-ledger"
+          .venv/bin/python -m hermes_cli.main plugins validate "$GITHUB_WORKSPACE/approval-ledger"
       - name: End to end (aux-ledger)
         env:
           PYTHONPATH: ${{ github.workspace }}/hermes
@@ -63,3 +64,7 @@ jobs:
         env:
           PYTHONPATH: ${{ github.workspace }}/hermes
         run: hermes/.venv/bin/python tests/e2e/error_ledger_e2e.py
+      - name: End to end (approval-ledger)
+        env:
+          PYTHONPATH: ${{ github.workspace }}/hermes
+        run: hermes/.venv/bin/python tests/e2e/approval_ledger_e2e.py

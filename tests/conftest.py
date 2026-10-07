@@ -49,3 +49,13 @@ def errors_plugin():
 @pytest.fixture
 def errledger(errors_plugin):
     return errors_plugin.ledger
+
+
+@pytest.fixture
+def approvals_plugin():
+    return _load_plugin("approval-ledger")
+
+
+@pytest.fixture
+def apledger(approvals_plugin):
+    return approvals_plugin.ledger

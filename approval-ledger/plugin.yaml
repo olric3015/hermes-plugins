@@ -1,0 +1,8 @@
+name: approval-ledger
+version: 1.0.0
+description: "Local ledger of Hermes's approval prompts: which rules ask most, how the prompts end and how long you take to answer, shown by /approval-log."
+author: olric3015
+requires_hermes: ">=0.21.5"
+provides_hooks:
+  - pre_approval_request
+  - post_approval_response

@@ -1,0 +1,7 @@
+name: command-ledger
+version: 1.0.0
+description: "Local ledger of the slash commands you run in Hermes: which ones, how often, in how many sessions and when last, shown by /command-log."
+author: olric3015
+requires_hermes: ">=0.21.5"
+provides_hooks:
+  - pre_command

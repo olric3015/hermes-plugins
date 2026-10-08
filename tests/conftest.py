@@ -59,3 +59,13 @@ def approvals_plugin():
 @pytest.fixture
 def apledger(approvals_plugin):
     return approvals_plugin.ledger
+
+
+@pytest.fixture
+def commands_plugin():
+    return _load_plugin("command-ledger")
+
+
+@pytest.fixture
+def cmdledger(commands_plugin):
+    return commands_plugin.ledger

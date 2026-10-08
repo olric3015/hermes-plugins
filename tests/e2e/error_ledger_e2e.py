@@ -13,6 +13,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
@@ -56,7 +57,7 @@ def main() -> int:
 
     data = HOME / "plugin-data" / "error-ledger" / "errors.jsonl"
     assert data.exists(), "no provider error was recorded"
-    raw = data.read_text(encoding="utf-8")
+    raw = data.read_text(encoding="utf-8-sig")
     rows = [json.loads(line) for line in raw.splitlines()]
     print(f"provider saw {requests} main request(s), {answered} turn(s) answered; "
           f"{len(rows)} error row(s) recorded")
@@ -89,6 +90,15 @@ def main() -> int:
     assert last_reason in session and (first_reason == last_reason or first_reason not in session)
     week = errors("7d").splitlines()
     assert week[0] == "Provider errors, last 7 days:" and week[3:] == report.splitlines()[3:]
+    days = errors("all days").splitlines()
+    print("\n".join(days))
+    expected_days = {}
+    for row in rows:
+        day = time.strftime("%Y-%m-%d", time.localtime(row["ts"]))
+        expected_days[day] = expected_days.get(day, 0) + 1
+    assert days[2].split()[0] == "day"
+    assert [line.split()[:2] for line in days[3:3 + len(expected_days)]] == [
+        [day, str(count)] for day, count in sorted(expected_days.items(), reverse=True)]
     listing = errors("all recent").splitlines()
     print("\n".join(listing))
     assert listing[0] == f"Provider errors, all recorded, newest {len(rows)} of {len(rows)}:"

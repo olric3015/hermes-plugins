@@ -11,6 +11,7 @@ import json
 import os
 import tempfile
 import threading
+import time
 from collections import Counter
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
@@ -67,7 +68,7 @@ def build_row(payload: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _trim(path: Path) -> None:
-    lines = path.read_text(encoding="utf-8").splitlines()[-KEEP_LINES:]
+    lines = path.read_text(encoding="utf-8-sig").splitlines()[-KEEP_LINES:]
     fd, tmp = tempfile.mkstemp(dir=str(path.parent), prefix=".errors-", suffix=".tmp")
     try:
         with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as fh:
@@ -92,7 +93,7 @@ def read(path: Path) -> List[Dict[str, Any]]:
     """Every parseable row, oldest first. A torn or foreign line is skipped, not fatal."""
     rows: List[Dict[str, Any]] = []
     try:
-        with open(path, encoding="utf-8") as fh:
+        with open(path, encoding="utf-8-sig") as fh:
             for line in fh:
                 try:
                     row = json.loads(line)
@@ -184,13 +185,25 @@ def _top(counter: Counter) -> str:
     return f"{name} ({count})"
 
 
+def local_day(ts: Any) -> str:
+    """The local calendar day of a row's timestamp, as YYYY-MM-DD ("unknown" when it has none)."""
+    try:
+        return time.strftime("%Y-%m-%d", time.localtime(float(ts)))
+    except (TypeError, ValueError, OverflowError, OSError):
+        return "unknown"
+
+
 def summarize(rows: List[Dict[str, Any]], *, title: str, by: str = "model") -> str:
-    """Per-``by`` failed attempts: how many, how many Hermes could retry, the commonest cause."""
+    """Per-``by`` failed attempts: how many, how many Hermes could retry, the commonest cause.
+
+    ``by="day"`` groups by local calendar day, newest day first; every other grouping puts the
+    largest group first."""
     if not rows:
         return f"Provider errors, {title}: none recorded."
     groups: Dict[str, List[Dict[str, Any]]] = {}
     for row in rows:
-        groups.setdefault(str(row.get(by) or "unknown"), []).append(row)
+        key = local_day(row.get("ts")) if by == "day" else str(row.get(by) or "unknown")
+        groups.setdefault(key, []).append(row)
     # Grouped by reason, the second column names where it happened; otherwise why.
     other = "model" if by == "reason" else "reason"
 
@@ -199,7 +212,11 @@ def summarize(rows: List[Dict[str, Any]], *, title: str, by: str = "model") -> s
                 _top(Counter(str(r.get(other) or "unknown") for r in items)),
                 _top(Counter(int(r["status"]) for r in items if isinstance(r.get("status"), int)))]
 
-    ordered = sorted(groups.items(), key=lambda kv: (-len(kv[1]), kv[0]))
+    if by == "day":
+        # Rows without a usable time go last.
+        ordered = sorted(groups.items(), key=lambda kv: (kv[0] != "unknown", kv[0]), reverse=True)
+    else:
+        ordered = sorted(groups.items(), key=lambda kv: (-len(kv[1]), kv[0]))
     body = [cells(name, items) for name, items in ordered]
     if len(ordered) > 1:
         body.append(cells("total", rows))

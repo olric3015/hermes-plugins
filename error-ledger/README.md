@@ -26,6 +26,7 @@ Requires Hermes 0.21.5 or newer. No API key, no configuration, no dependencies.
 /errors 7d          the last 7 days (any number of hours or days: 6h, 30d)
 /errors providers   add to any of the above to group by provider
 /errors reasons     add to any of the above to group by cause
+/errors days        add to any of the above to group by day, newest first
 /errors recent      add to any of the above to list the newest 10 failures instead
 /errors clear       delete the ledger
 ```
@@ -63,7 +64,24 @@ when       model  provider      reason  status  retryable
 3h ago   m-small     other  overloaded     529        yes
 ```
 
-A time window counts back from now (`/errors 6h`, `/errors 7d reasons`, `/errors 30d recent`).
+`/errors days` puts one day on each line, newest day first, so a bad day stands out. Days are
+your computer's local calendar days, and a day with no failures has no line. Example (the
+plugin's own output for a sample week):
+
+```
+Provider errors, last 7 days:
+
+day         errors  retryable       top reason  top status
+2026-10-08       5          4   rate_limit (4)     429 (4)
+2026-10-07      31         31  overloaded (28)    529 (28)
+2026-10-06       3          3   rate_limit (2)     429 (2)
+total           39         38  overloaded (28)    529 (28)
+
+One row per failed attempt Hermes reported; the retry after it may have succeeded.
+```
+
+A time window counts back from now (`/errors 6h`, `/errors 7d reasons`, `/errors 30d days`,
+`/errors 30d recent`).
 The ledger keeps its newest 5,000 rows, so a long window on a busy install reaches back only as
 far as those rows do.
 
@@ -109,6 +127,9 @@ hermes plugins validate error-ledger
 
 ## Changes
 
+- **1.2.0**: `/errors days`, one line per day with failures, newest day first; works with
+  every window (`/errors 30d days`). The ledger also reads correctly after a Windows tool has
+  saved it with a byte-order mark. What is recorded did not change.
 - **1.1.0**: time windows (`/errors 6h`, `/errors 7d`, any number of hours or days) and
   `/errors recent`, the newest ten failures with how long ago each happened. What is recorded
   did not change.

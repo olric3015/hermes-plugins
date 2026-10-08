@@ -28,12 +28,13 @@ _HELP = """\
   /errors 7d          the last 7 days (any number of hours or days: 6h, 30d)
   /errors providers   add to any of the above to group by provider
   /errors reasons     add to any of the above to group by cause
+  /errors days        add to any of the above to group by day, newest first
   /errors recent      add to any of the above to list the newest 10 failures instead
   /errors clear       delete the ledger
 """
 
 _TITLES = {"day": "last 24 hours", "session": "latest session", "all": "all recorded"}
-_GROUP_WORDS = {"models": "model", "providers": "provider", "reasons": "reason"}
+_GROUP_WORDS = {"models": "model", "providers": "provider", "reasons": "reason", "days": "day"}
 
 
 def _ledger_path() -> Path:
@@ -76,5 +77,5 @@ def _handle_errors(raw_args: str = "") -> Optional[str]:
 def register(ctx) -> None:
     ctx.register_hook("api_request_error", _on_api_request_error)
     ctx.register_command("errors", handler=_handle_errors,
-                         args_hint="[session|all|7d] [providers|reasons|recent] | clear",
+                         args_hint="[session|all|7d] [providers|reasons|days|recent] | clear",
                          description="Show which provider calls failed (rate limits, overloads, ...) and why.")

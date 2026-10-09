@@ -27,12 +27,13 @@ _HELP = """\
   /command-log all         everything in the ledger
   /command-log 7d          the last 7 days (any number of hours or days: 6h, 30d)
   /command-log platforms   add to any of the above to group by platform (cli, telegram, ...)
+  /command-log days        add to any of the above to group by day, newest first
   /command-log recent      add to any of the above to list the newest 10 commands instead
   /command-log clear       delete the ledger
 """
 
 _TITLES = {"day": "last 24 hours", "session": "latest session", "all": "all recorded"}
-_GROUP_WORDS = {"commands": "command", "platforms": "platform", "surfaces": "surface"}
+_GROUP_WORDS = {"commands": "command", "platforms": "platform", "surfaces": "surface", "days": "day"}
 
 
 def _ledger_path() -> Path:
@@ -78,5 +79,5 @@ def _handle_command_log(raw_args: str = "") -> Optional[str]:
 def register(ctx) -> None:
     ctx.register_hook("pre_command", _on_pre_command)
     ctx.register_command(COMMAND, handler=_handle_command_log,
-                         args_hint="[session|all|7d] [platforms|recent] | clear",
+                         args_hint="[session|all|7d] [platforms|days|recent] | clear",
                          description="Show which slash commands you run, how often and when last.")

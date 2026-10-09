@@ -25,6 +25,7 @@ Requires Hermes 0.21.5 or newer. No API key, no configuration, no dependencies.
 /command-log all         everything in the ledger
 /command-log 7d          the last 7 days (any number of hours or days: 6h, 30d)
 /command-log platforms   add to any of the above to group by platform (cli, telegram, ...)
+/command-log days        add to any of the above to group by day, newest first
 /command-log recent      add to any of the above to list the newest 10 commands instead
 /command-log clear       delete the ledger
 ```
@@ -69,8 +70,24 @@ when    command  typed as  platform
 3s ago    /help                 cli
 ```
 
+`/command-log days` puts one day on each line, newest day first, so you can see which days you
+drove Hermes by hand and in how many sessions. Days are your computer's local calendar days, and
+a day with no commands has no line. Example (the plugin's own output for a sample week):
+
+```
+Slash commands, last 7 days:
+
+day         uses  share  sessions  last used
+2026-10-08     2    12%         2     3h ago
+2026-10-07    11    69%         4     1d ago
+2026-10-06     3    19%         2     2d ago
+total         16   100%         8     3h ago
+
+The CLI counts Hermes's built-in commands; messaging platforms add plugin commands.
+```
+
 A time window counts back from now (`/command-log 6h`, `/command-log 7d platforms`,
-`/command-log 30d recent`). The ledger keeps its newest 5,000 rows, so a long window on a busy
+`/command-log 30d days`, `/command-log 30d recent`). The ledger keeps its newest 5,000 rows, so a long window on a busy
 install reaches back only as far as those rows do.
 
 ## What it does not see
@@ -123,6 +140,8 @@ hermes plugins validate command-ledger
 
 ## Changes
 
+- **1.1.0**: `/command-log days`, one line per day with commands, newest day first; works with
+  every window (`/command-log 30d days`). What is recorded did not change.
 - **1.0.0**: first release.
 
 MIT licensed.

@@ -24,6 +24,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -87,7 +88,7 @@ def child() -> int:
     _cli()
     asyncio.run(_gateway())
     handler = get_plugin_commands()["command-log"]["handler"]
-    for args in ("", "all", "all platforms", "session", "all recent", "7d"):
+    for args in ("", "all", "all platforms", "all days", "session", "all recent", "7d"):
         (HOME / f"report-{args.replace(' ', '_') or 'default'}.txt").write_text(handler(args), encoding="utf-8")
     return 0
 
@@ -127,6 +128,14 @@ def main() -> int:
     assert lines[7].split()[:4] == ["total", "5", "100%", "2"], lines
     platforms = report["report-all_platforms"].splitlines()
     assert [line.split()[:2] for line in platforms[3:5]] == [["cli", "3"], ["telegram", "2"]], platforms
+    days = report["report-all_days"].splitlines()
+    expected_days = {}
+    for row in rows:
+        day = time.strftime("%Y-%m-%d", time.localtime(row["ts"]))
+        expected_days[day] = expected_days.get(day, 0) + 1
+    assert days[2].split()[0] == "day", days
+    assert [line.split()[:2] for line in days[3:3 + len(expected_days)]] == [
+        [day, str(count)] for day, count in sorted(expected_days.items(), reverse=True)], days
     session = report["report-session"].splitlines()
     assert session[0] == "Slash commands, latest session:" and session[-3].split()[:2] == ["total", "2"], session
     recent = report["report-all_recent"].splitlines()

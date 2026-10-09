@@ -12,6 +12,7 @@ import json
 import os
 import tempfile
 import threading
+import time
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
@@ -150,12 +151,26 @@ def _table(header: List[str], body: List[List[str]]) -> List[str]:
     return out
 
 
+def local_day(ts: Any) -> str:
+    """The local calendar day of a row's timestamp, as YYYY-MM-DD ("unknown" when it has none)."""
+    try:
+        return time.strftime("%Y-%m-%d", time.localtime(float(ts)))
+    except (TypeError, ValueError, OverflowError, OSError):
+        return "unknown"
+
+
 def summarize(rows: List[Dict[str, Any]], *, title: str, now: float, by: str = "command") -> str:
-    """Per-``by`` command use: how often, its share, in how many sessions, and when last."""
+    """Per-``by`` command use: how often, its share, in how many sessions, and when last.
+
+    ``by="day"`` groups by local calendar day, newest day first; every other grouping puts the
+    largest group first."""
     if not rows:
         return f"Slash commands, {title}: none recorded."
     groups: Dict[str, List[Dict[str, Any]]] = {}
     for row in rows:
+        if by == "day":
+            groups.setdefault(local_day(row.get("ts")), []).append(row)
+            continue
         name = str(row.get(by) or "unknown")
         groups.setdefault(f"/{name}" if by == "command" else name, []).append(row)
 
@@ -165,7 +180,11 @@ def summarize(rows: List[Dict[str, Any]], *, title: str, now: float, by: str = "
         return [name, str(len(items)), f"{100 * len(items) / len(rows):.0f}%", str(len(sessions)),
                 _age(now - newest)]
 
-    ordered = sorted(groups.items(), key=lambda kv: (-len(kv[1]), kv[0]))
+    if by == "day":
+        # Rows without a usable time go last.
+        ordered = sorted(groups.items(), key=lambda kv: (kv[0] != "unknown", kv[0]), reverse=True)
+    else:
+        ordered = sorted(groups.items(), key=lambda kv: (-len(kv[1]), kv[0]))
     body = [cells(name, items) for name, items in ordered]
     if len(ordered) > 1:
         body.append(cells("total", rows))

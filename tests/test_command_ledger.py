@@ -290,3 +290,54 @@ def test_session_wins_over_all(wired):
     ctx.hooks["pre_command"](**_payload())
     assert log("all session").splitlines()[0] == "Slash commands, latest session:"
     assert log("session all").splitlines()[0] == "Slash commands, latest session:"
+
+
+def _local(year, month, day, hour=12, minute=0):
+    from datetime import datetime
+
+    return datetime(year, month, day, hour, minute).timestamp()
+
+
+def test_summary_by_day_is_newest_day_first(cmdledger):
+    rows = [_row("help", ts=_local(2027, 1, 8, 9)),
+            _row("model", session="s2", ts=_local(2027, 1, 10, 0, 1)),
+            _row("model", session="s3", ts=_local(2027, 1, 10, 23, 59)),
+            _row("usage", session="s2", ts=_local(2027, 1, 10, 13)),
+            _row("help", ts=_local(2027, 1, 9, 23, 59)),
+            _row("new", ts=_local(2027, 1, 9, 0, 0))]
+    now = _local(2027, 1, 11, 0, 59)
+    lines = cmdledger.summarize(rows, title="last 7 days", now=now, by="day").splitlines()
+    assert lines[2].split() == ["day", "uses", "share", "sessions", "last", "used"]
+    # Days, not counts, set the order: the smallest day can sit above a busier one.
+    assert lines[3].split() == ["2027-01-10", "3", "50%", "2", "1h", "ago"]
+    assert lines[4].split() == ["2027-01-09", "2", "33%", "1", "1d", "ago"]
+    assert lines[5].split() == ["2027-01-08", "1", "17%", "1", "2d", "ago"]
+    assert lines[6].split()[:4] == ["total", "6", "100%", "3"]
+
+
+def test_day_of_a_row_without_a_time_goes_last(cmdledger):
+    assert cmdledger.local_day(_local(2027, 3, 4, 0, 0)) == "2027-03-04"
+    assert cmdledger.local_day(None) == cmdledger.local_day("soon") == cmdledger.local_day(1e300) == "unknown"
+    rows = [{"command": "help"}, _row("help", ts=_local(2027, 1, 2)), _row("help", ts=_local(2027, 1, 1))]
+    lines = cmdledger.summarize(rows, title="x", now=_local(2027, 1, 3), by="day").splitlines()
+    assert [line.split()[0] for line in lines[3:7]] == ["2027-01-02", "2027-01-01", "unknown", "total"]
+
+
+def test_command_days(wired, cmdledger):
+    ctx, path = wired
+    log = ctx.commands["command-log"]
+    now = time.time()
+    cmdledger.append(path, _row("help", session="old", ts=now - 3 * 86400))
+    # Both at the same moment, so a run at midnight cannot split them over two days.
+    cmdledger.append(path, _row("model", ts=now - 10))
+    cmdledger.append(path, _row("usage", ts=now - 10))
+    week = log("7d days").splitlines()
+    assert week[0] == "Slash commands, last 7 days:" and week[2].split()[0] == "day"
+    assert [line.split()[:2] for line in week[3:6]] == [
+        [time.strftime("%Y-%m-%d", time.localtime(now - 10)), "2"],
+        [time.strftime("%Y-%m-%d", time.localtime(now - 3 * 86400)), "1"], ["total", "3"]]
+    assert [line.split()[1] for line in log("days").splitlines()[3:4]] == ["2"]
+    assert log("session days").splitlines()[0] == "Slash commands, latest session:"
+    assert "/command-log days" in log("help")
+    # recent still lists commands, not days.
+    assert log("all days recent").splitlines()[2].split()[0] == "when"

@@ -11,6 +11,7 @@ import json
 import os
 import tempfile
 import threading
+import time
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
@@ -190,13 +191,25 @@ def _table(header: List[str], body: List[List[str]]) -> List[str]:
     return out
 
 
+def local_day(ts: Any) -> str:
+    """The local calendar day of a row's timestamp, as YYYY-MM-DD ("unknown" when it has none)."""
+    try:
+        return time.strftime("%Y-%m-%d", time.localtime(float(ts)))
+    except (TypeError, ValueError, OverflowError, OSError):
+        return "unknown"
+
+
 def summarize(rows: List[Dict[str, Any]], *, title: str, by: str = "pattern") -> str:
-    """Per-``by`` approval prompts: how many, how each ended, and how long a person took."""
+    """Per-``by`` approval prompts: how many, how each ended, and how long a person took.
+
+    ``by="day"`` groups by local calendar day, newest day first; every other grouping puts the
+    largest group first."""
     if not rows:
         return f"Approvals, {title}: none recorded."
     groups: Dict[str, List[Dict[str, Any]]] = {}
     for row in rows:
-        groups.setdefault(str(row.get(by) or "unknown"), []).append(row)
+        key = local_day(row.get("ts")) if by == "day" else str(row.get(by) or "unknown")
+        groups.setdefault(key, []).append(row)
 
     def cells(name: str, items: List[Dict[str, Any]]) -> List[str]:
         ended = [str(r.get("outcome")) for r in items]
@@ -204,7 +217,11 @@ def summarize(rows: List[Dict[str, Any]], *, title: str, by: str = "pattern") ->
         return [name, str(len(items)), str(ended.count("approved")), str(ended.count("denied")),
                 str(ended.count("unanswered")), _duration(_median(waits))]
 
-    ordered = sorted(groups.items(), key=lambda kv: (-len(kv[1]), kv[0]))
+    if by == "day":
+        # Rows without a usable time go last.
+        ordered = sorted(groups.items(), key=lambda kv: (kv[0] != "unknown", kv[0]), reverse=True)
+    else:
+        ordered = sorted(groups.items(), key=lambda kv: (-len(kv[1]), kv[0]))
     body = [cells(name, items) for name, items in ordered]
     if len(ordered) > 1:
         body.append(cells("total", rows))

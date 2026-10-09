@@ -1,5 +1,5 @@
 name: approval-ledger
-version: 1.0.0
+version: 1.1.0
 description: "Local ledger of Hermes's approval prompts: which rules ask most, how the prompts end and how long you take to answer, shown by /approval-log."
 author: olric3015
 requires_hermes: ">=0.21.5"

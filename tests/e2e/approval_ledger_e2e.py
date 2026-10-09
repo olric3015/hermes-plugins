@@ -136,6 +136,15 @@ def main() -> int:
     assert session[3].split()[6] == f"{rows[3]['wait_s']:.1f}s", "only the override was a person's answer"
     week = log("7d").splitlines()
     assert week[0] == "Approvals, last 7 days:" and week[3:] == lines[3:]
+    days = log("all days").splitlines()
+    print("\n".join(days))
+    expected_days = {}
+    for row in rows:
+        day = time.strftime("%Y-%m-%d", time.localtime(row["ts"]))
+        expected_days[day] = expected_days.get(day, 0) + 1
+    assert days[2].split()[0] == "day"
+    assert [line.split()[:2] for line in days[3:3 + len(expected_days)]] == [
+        [day, str(count)] for day, count in sorted(expected_days.items(), reverse=True)]
     listing = log("all recent").splitlines()
     print("\n".join(listing))
     assert listing[0] == "Approvals, all recorded, newest 5 of 5:"

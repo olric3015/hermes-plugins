@@ -26,6 +26,7 @@ Requires Hermes 0.21.5 or newer. No API key, no configuration, no dependencies.
 /approval-log all         everything in the ledger
 /approval-log 7d          the last 7 days (any number of hours or days: 6h, 30d)
 /approval-log surfaces    add to any of the above to group by where it asked
+/approval-log days        add to any of the above to group by day, newest first
 /approval-log recent      add to any of the above to list the newest 10 decisions instead
 /approval-log clear       delete the ledger
 ```
@@ -70,8 +71,24 @@ when             pattern  surface         answer  wait
 4s ago  recursive delete      cli           deny  0.6s
 ```
 
+`/approval-log days` puts one day on each line, newest day first, so a day of many prompts or
+many unanswered ones stands out. Days are your computer's local calendar days, and a day with no
+decisions has no line. Example (the plugin's own output for a sample week):
+
+```
+Approvals, last 7 days:
+
+day         asked  approved  denied  unanswered  median wait
+2026-10-08      3         2       1           0         4.2s
+2026-10-07     12         6       2           4         3.4s
+2026-10-06      2         1       1           0         6.6s
+total          17         9       4           4         3.9s
+
+Smart-mode verdicts count as approved or denied; median wait is people's answers only.
+```
+
 A time window counts back from now (`/approval-log 6h`, `/approval-log 7d surfaces`,
-`/approval-log 30d recent`). The ledger keeps its newest 5,000 rows, so a long window on a busy
+`/approval-log 30d days`, `/approval-log 30d recent`). The ledger keeps its newest 5,000 rows, so a long window on a busy
 install reaches back only as far as those rows do.
 
 ## What it does not see
@@ -120,6 +137,8 @@ hermes plugins validate approval-ledger
 
 ## Changes
 
+- **1.1.0**: `/approval-log days`, one line per day with decisions, newest day first; works
+  with every window (`/approval-log 30d days`). What is recorded did not change.
 - **1.0.0**: first release.
 
 MIT licensed.

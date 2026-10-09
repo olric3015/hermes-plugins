@@ -29,12 +29,13 @@ _HELP = """\
   /approval-log all         everything in the ledger
   /approval-log 7d          the last 7 days (any number of hours or days: 6h, 30d)
   /approval-log surfaces    add to any of the above to group by where it asked
+  /approval-log days        add to any of the above to group by day, newest first
   /approval-log recent      add to any of the above to list the newest 10 decisions instead
   /approval-log clear       delete the ledger
 """
 
 _TITLES = {"day": "last 24 hours", "session": "latest session", "all": "all recorded"}
-_GROUP_WORDS = {"patterns": "pattern", "surfaces": "surface"}
+_GROUP_WORDS = {"patterns": "pattern", "surfaces": "surface", "days": "day"}
 
 # The open prompt of this thread: (surface, pattern_key, session_key) and when it was raised.
 # Held in memory only, so the session key never reaches the ledger.
@@ -98,5 +99,5 @@ def register(ctx) -> None:
     ctx.register_hook("pre_approval_request", _on_pre_approval_request)
     ctx.register_hook("post_approval_response", _on_post_approval_response)
     ctx.register_command("approval-log", handler=_handle_approval_log,
-                         args_hint="[session|all|7d] [surfaces|recent] | clear",
+                         args_hint="[session|all|7d] [surfaces|days|recent] | clear",
                          description="Show which approval prompts Hermes raised, how they ended and how long you took.")

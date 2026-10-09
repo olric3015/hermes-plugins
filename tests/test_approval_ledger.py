@@ -349,3 +349,55 @@ def test_hooks_never_raise(approvals_plugin, monkeypatch):
 
     approvals_plugin._on_pre_approval_request(surface=Unprintable())
     approvals_plugin._on_post_approval_response(surface=Unprintable())
+
+
+def _local(year, month, day, hour=12, minute=0):
+    from datetime import datetime
+
+    return datetime(year, month, day, hour, minute).timestamp()
+
+
+def test_summary_by_day_is_newest_day_first(apledger):
+    rows = [_row("sudo", "once", wait=3.0, ts=_local(2027, 1, 8, 9)),
+            _row("sudo", "deny", wait=2.0, ts=_local(2027, 1, 10, 0, 1)),
+            _row("sudo", "timeout", wait=300.0, ts=_local(2027, 1, 10, 23, 59)),
+            _row("recursive delete", "once", wait=4.0, ts=_local(2027, 1, 10, 13)),
+            _row("sudo", "smart_approve", wait=0.5, surface="smart", decided_by="aux_llm",
+                 ts=_local(2027, 1, 9, 23, 59)),
+            _row("sudo", "deny", wait=8.0, ts=_local(2027, 1, 9, 0, 0))]
+    lines = apledger.summarize(rows, title="last 7 days", by="day").splitlines()
+    assert lines[2].split() == ["day", "asked", "approved", "denied", "unanswered", "median", "wait"]
+    # Days, not counts, set the order: the smallest day can sit above a busier one.
+    assert lines[3].split() == ["2027-01-10", "3", "1", "1", "1", "3.0s"]
+    assert lines[4].split() == ["2027-01-09", "2", "1", "1", "0", "8.0s"]
+    assert lines[5].split() == ["2027-01-08", "1", "1", "0", "0", "3.0s"]
+    assert lines[6].split() == ["total", "6", "3", "2", "1", "3.5s"]
+
+
+def test_day_of_a_row_without_a_time_goes_last(apledger):
+    assert apledger.local_day(_local(2027, 3, 4, 0, 0)) == "2027-03-04"
+    assert apledger.local_day(None) == apledger.local_day("soon") == apledger.local_day(1e300) == "unknown"
+    rows = [{"pattern": "p", "outcome": "approved"}, _row("p", "once", ts=_local(2027, 1, 2)),
+            _row("p", "once", ts=_local(2027, 1, 1))]
+    lines = apledger.summarize(rows, title="x", by="day").splitlines()
+    assert [line.split()[0] for line in lines[3:7]] == ["2027-01-02", "2027-01-01", "unknown", "total"]
+
+
+def test_command_days(wired, apledger):
+    ctx, path = wired
+    log = ctx.commands["approval-log"]
+    now = time.time()
+    apledger.append(path, _row("p-old", "once", session="old", ts=now - 3 * 86400))
+    # Both at the same moment, so a run at midnight cannot split them over two days.
+    apledger.append(path, _row("p-new", "deny", ts=now - 10))
+    apledger.append(path, _row("p-new", "once", ts=now - 10))
+    week = log("7d days").splitlines()
+    assert week[0] == "Approvals, last 7 days:" and week[2].split()[0] == "day"
+    assert [line.split()[:2] for line in week[3:6]] == [
+        [time.strftime("%Y-%m-%d", time.localtime(now - 10)), "2"],
+        [time.strftime("%Y-%m-%d", time.localtime(now - 3 * 86400)), "1"], ["total", "3"]]
+    assert [line.split()[1] for line in log("days").splitlines()[3:4]] == ["2"]
+    assert log("session days").splitlines()[0] == "Approvals, latest session:"
+    assert "/approval-log days" in log("help")
+    # recent still lists decisions, not days.
+    assert log("all days recent").splitlines()[2].split()[0] == "when"

@@ -13,6 +13,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
@@ -50,7 +51,7 @@ def main() -> int:
 
     data = HOME / "plugin-data" / "stream-speed" / "streams.jsonl"
     assert data.exists(), "no stream was recorded"
-    raw = data.read_text(encoding="utf-8")
+    raw = data.read_text(encoding="utf-8-sig")
     rows = [json.loads(line) for line in raw.splitlines()]
     print(f"hermes made {main_turns} main request(s); {len(rows)} stream row(s) recorded")
     for row in rows:
@@ -81,6 +82,15 @@ def main() -> int:
     print("\n".join(by_provider))
     assert by_provider[2].split()[0] == "provider"
     assert {line.split()[0] for line in by_provider[3:]} == {r["provider"] or "unknown" for r in rows}
+    days = speed("all days").splitlines()
+    print("\n".join(days))
+    expected_days = {}
+    for row in rows:
+        day = time.strftime("%Y-%m-%d", time.localtime(row["ts"]))
+        expected_days[day] = expected_days.get(day, 0) + 1
+    assert days[2].split()[0] == "day"
+    assert [line.split()[:2] for line in days[3:3 + len(expected_days)]] == [
+        [day, str(count)] for day, count in sorted(expected_days.items(), reverse=True)]
     # Each one-shot turn is its own session, so the latest session holds exactly the last stream.
     assert rows[-1]["session_id"] and rows[0]["session_id"] != rows[-1]["session_id"]
     session = speed("session").splitlines()

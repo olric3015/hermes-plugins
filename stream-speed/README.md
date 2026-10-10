@@ -24,6 +24,7 @@ Requires Hermes 0.21.5 or newer. No API key, no configuration, no dependencies.
 /speed all         everything recorded
 /speed 7d          the last 7 days (any number of hours or days: 6h, 30d)
 /speed providers   add to any of the above to group by provider instead of model
+/speed days        add to any of the above to group by day, newest first
 /speed clear       delete the record
 ```
 
@@ -49,6 +50,21 @@ fake-model        2       0       0.92s  1.00s      111
 - **failed** counts streams that errored or did not finish.
 - Streams with no visible text (a response that is only tool calls) are counted, shown with no
   first-text time, and mentioned in a footer line.
+
+`/speed days` puts one day on each line, newest day first, so you can see the day a provider
+became slow. Days are your computer's local calendar days, and a day with no streams has no
+line. Example (the plugin's own output for a sample week):
+
+```
+Streaming speed, last 7 days:
+
+day         streams  failed  first text    p90  chars/s
+2026-10-06        4       1       4.20s  5.10s       79
+2026-10-05        2       0       1.15s  1.30s      127
+2026-10-04        3       0       0.90s  1.10s      139
+
+1 stream(s) carried no text (tool calls only, or failed before any).
+```
 
 ## How accurate it is
 
@@ -96,6 +112,9 @@ hermes plugins validate stream-speed
 
 ## Changes
 
+- **1.2.0**: `/speed days`, one line per day with streams, newest day first; works with every
+  window (`/speed 30d days`). The record also reads correctly after a Windows tool has saved it
+  with a byte-order mark. What is recorded did not change.
 - **1.1.0**: `/speed session`, time windows (`/speed 6h`, `/speed 7d`, any number of hours or
   days) and grouping by provider (`/speed providers`). What is recorded did not change.
 - **1.0.0**: first release.

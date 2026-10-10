@@ -113,7 +113,7 @@ class Tracker:
 
 
 def _trim(path: Path) -> None:
-    lines = path.read_text(encoding="utf-8").splitlines()[-KEEP_LINES:]
+    lines = path.read_text(encoding="utf-8-sig").splitlines()[-KEEP_LINES:]
     fd, tmp = tempfile.mkstemp(dir=str(path.parent), prefix=".streams-", suffix=".tmp")
     try:
         with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as fh:
@@ -138,7 +138,7 @@ def read(path: Path) -> List[Dict[str, Any]]:
     """Every parseable row, oldest first. A torn or foreign line is skipped, not fatal."""
     rows: List[Dict[str, Any]] = []
     try:
-        with open(path, encoding="utf-8") as fh:
+        with open(path, encoding="utf-8-sig") as fh:
             for line in fh:
                 try:
                     row = json.loads(line)
@@ -217,15 +217,32 @@ def _table(header: List[str], body: List[List[str]]) -> List[str]:
     return out
 
 
+def local_day(ts: Any) -> str:
+    """The local calendar day of a row's timestamp, as YYYY-MM-DD ("unknown" when it has none)."""
+    try:
+        return time.strftime("%Y-%m-%d", time.localtime(float(ts)))
+    except (TypeError, ValueError, OverflowError, OSError):
+        return "unknown"
+
+
 def summarize(rows: List[Dict[str, Any]], *, title: str, by: str = "model") -> str:
-    """Per-``by`` stream count, failures, median and p90 time to first text, median chars/s."""
+    """Per-``by`` stream count, failures, median and p90 time to first text, median chars/s.
+
+    ``by="day"`` groups by local calendar day, newest day first; every other grouping puts the
+    largest group first."""
     if not rows:
         return f"Streaming speed, {title}: no streams recorded."
     groups: Dict[str, List[Dict[str, Any]]] = {}
     for row in rows:
-        groups.setdefault(str(row.get(by) or "unknown"), []).append(row)
+        key = local_day(row.get("ts")) if by == "day" else str(row.get(by) or "unknown")
+        groups.setdefault(key, []).append(row)
+    if by == "day":
+        # Rows without a usable time go last.
+        ordered = sorted(groups.items(), key=lambda kv: (kv[0] != "unknown", kv[0]), reverse=True)
+    else:
+        ordered = sorted(groups.items(), key=lambda kv: (-len(kv[1]), kv[0]))
     body = []
-    for name, items in sorted(groups.items(), key=lambda kv: (-len(kv[1]), kv[0])):
+    for name, items in ordered:
         firsts = [float(r["ttft_s"]) for r in items if r.get("ttft_s") is not None]
         rates = [rate for rate in (_rate(r) for r in items) if rate is not None]
         body.append([name, str(len(items)), str(sum(1 for r in items if r.get("failed") or not r.get("finished"))),

@@ -270,3 +270,67 @@ def test_command_windows_and_provider_grouping(speed_plugin, tmp_path, monkeypat
     assert len(speed("all 1h").splitlines()) == 5
     assert speed("0d").startswith("Unknown option: 0d") and speed("7w").startswith("Unknown option: 7w")
     assert "/speed 7d" in speed("help") and "/speed session" in speed("help") and "/speed providers" in speed("help")
+
+
+def _local(year, month, day, hour=12, minute=0):
+    from datetime import datetime
+
+    return datetime(year, month, day, hour, minute).timestamp()
+
+
+def test_summary_by_day_is_newest_day_first(timing):
+    rows = [_row("m-a", None, 9.0, 0, finished=False, ts=_local(2027, 1, 8, 9)),
+            _row("m-a", 0.4, 2.4, 400, ts=_local(2027, 1, 10, 0, 1)),
+            _row("m-b", 0.6, 2.6, 600, ts=_local(2027, 1, 10, 23, 59)),
+            _row("m-a", 2.0, 4.0, 200, ts=_local(2027, 1, 9, 23, 59))]
+    lines = timing.summarize(rows, title="last 7 days", by="day").splitlines()
+    assert lines[2].split() == ["day", "streams", "failed", "first", "text", "p90", "chars/s"]
+    # Days, not stream counts, set the order.
+    assert lines[3].split() == ["2027-01-10", "2", "0", "0.50s", "0.60s", "250"]
+    assert lines[4].split() == ["2027-01-09", "1", "0", "2.00s", "2.00s", "100"]
+    assert lines[5].split() == ["2027-01-08", "1", "1", "-", "-", "-"]
+    assert lines[-1] == "1 stream(s) carried no text (tool calls only, or failed before any)."
+
+
+def test_day_of_a_row_without_a_time_goes_last(timing):
+    assert timing.local_day(_local(2027, 3, 4, 0, 0)) == "2027-03-04"
+    assert timing.local_day(None) == timing.local_day("soon") == timing.local_day(1e300) == "unknown"
+    rows = [{"model": "m", "ttft_s": 1.0, "duration_s": 2.0, "chars": 10, "finished": True},
+            _row("m", 1.0, 2.0, 10, ts=_local(2027, 1, 2)), _row("m", 1.0, 2.0, 10, ts=_local(2027, 1, 1))]
+    lines = timing.summarize(rows, title="x", by="day").splitlines()
+    assert [line.split()[0] for line in lines[3:6]] == ["2027-01-02", "2027-01-01", "unknown"]
+
+
+def test_command_days(speed_plugin, tmp_path, monkeypatch):
+    path = tmp_path / speed_plugin.timing.FILENAME
+    monkeypatch.setattr(speed_plugin, "_data_path", lambda: path)
+    ctx = _Ctx()
+    speed_plugin.register(ctx)
+    speed, now = ctx.commands["speed"], time.time()
+    # The two new rows share a moment, so a run at midnight cannot split them over two days.
+    for row in (_srow("m-old", "s1", "p1", now - 3 * 86400), _srow("m-new", "s2", "p1", now - 10),
+                _srow("m-new", "s2", "p2", now - 10)):
+        speed_plugin.timing.append(path, row)
+    week = speed("7d days").splitlines()
+    assert week[0] == "Streaming speed, last 7 days:" and week[2].split()[0] == "day"
+    assert [line.split()[:2] for line in week[3:5]] == [
+        [time.strftime("%Y-%m-%d", time.localtime(now - 10)), "2"],
+        [time.strftime("%Y-%m-%d", time.localtime(now - 3 * 86400)), "1"]]
+    assert [line.split()[1] for line in speed("days").splitlines()[3:4]] == ["2"]
+    assert speed("session days").splitlines()[0] == "Streaming speed, latest session:"
+    assert "/speed days" in speed("help")
+
+
+BOM = "\ufeff".encode("utf-8")
+
+
+def test_a_record_saved_with_a_bom_still_reads_and_trims(timing, tmp_path, monkeypatch):
+    # Windows tools (PowerShell's Set-Content, some editors) add a BOM to files they touch.
+    path = tmp_path / timing.FILENAME
+    path.write_bytes(BOM + (json.dumps(_row("m-bom", 1.0, 2.0, 10)) + "\n").encode("utf-8"))
+    assert [r["model"] for r in timing.read(path)] == ["m-bom"]
+    monkeypatch.setattr(timing, "MAX_BYTES", 10)
+    monkeypatch.setattr(timing, "KEEP_LINES", 2)
+    timing.append(path, _row("m-next", 1.0, 2.0, 10))
+    assert [r["model"] for r in timing.read(path)] == ["m-bom", "m-next"]
+    assert not path.read_bytes().startswith(BOM), "the trim rewrites the file without the BOM"

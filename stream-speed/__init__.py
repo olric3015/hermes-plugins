@@ -29,11 +29,12 @@ _HELP = """\
   /speed all         everything recorded
   /speed 7d          the last 7 days (any number of hours or days: 6h, 30d)
   /speed providers   add to any of the above to group by provider instead of model
-  /speed clear       delete the record
+  /speed days        add to any of the above to group by day, newest first
+  /speed clear      delete the record
 """
 
 _TITLES = {"day": "last 24 hours", "session": "latest session", "all": "all recorded"}
-_GROUP_WORDS = {"models": "model", "providers": "provider"}
+_GROUP_WORDS = {"models": "model", "providers": "provider", "days": "day"}
 
 _tracker = timing.Tracker()
 
@@ -94,6 +95,6 @@ def register(ctx) -> None:
     ctx.register_hook("on_stream_start", _on_stream_start)
     ctx.register_hook("on_stream_delta", _on_stream_delta)
     ctx.register_hook("on_stream_end", _on_stream_end)
-    ctx.register_command("speed", handler=_handle_speed, args_hint="[session|all|7d] [providers] | clear",
+    ctx.register_command("speed", handler=_handle_speed, args_hint="[session|all|7d] [providers|days] | clear",
                          description="Show how fast each model starts answering and how fast it writes.")
     atexit.register(_drain_at_exit)

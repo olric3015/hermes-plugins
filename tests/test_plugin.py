@@ -88,3 +88,21 @@ def test_command_time_window_and_provider_grouping(wired):
     assert aux("all 1h").splitlines()[5].split()[:2] == ["total", "2"]
     assert aux("0d").startswith("Unknown option: 0d") and aux("7w").startswith("Unknown option: 7w")
     assert "/aux 7d" in aux("help") and "/aux providers" in aux("help")
+
+
+def test_command_days(wired):
+    hook, aux = wired.hooks["post_auxiliary_call"], wired.commands["aux"]
+    now = time.time()
+    _call(hook, ended_at=now - 3 * 86400, aux_task="vision")
+    # Both at the same moment, so a run at midnight cannot split them over two days.
+    _call(hook, ended_at=now - 10)
+    _call(hook, ended_at=now - 10, aux_task="title_generation")
+    week = aux("7d days").splitlines()
+    assert week[0] == "Auxiliary LLM calls, last 7 days:" and week[2].split()[0] == "day"
+    assert [line.split()[:2] for line in week[3:6]] == [
+        [time.strftime("%Y-%m-%d", time.localtime(now - 10)), "2"],
+        [time.strftime("%Y-%m-%d", time.localtime(now - 3 * 86400)), "1"], ["total", "3"]]
+    assert [line.split()[1] for line in aux("days").splitlines()[3:4]] == ["2"]
+    assert aux("session days").splitlines()[0] == "Auxiliary LLM calls, latest session:"
+    assert aux("all days").splitlines()[2].split()[0] == "day"
+    assert "/aux days" in aux("help")

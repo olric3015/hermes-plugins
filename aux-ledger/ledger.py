@@ -11,6 +11,7 @@ import json
 import os
 import tempfile
 import threading
+import time
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
@@ -60,7 +61,7 @@ def build_row(payload: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _trim(path: Path) -> None:
-    lines = path.read_text(encoding="utf-8").splitlines()[-KEEP_LINES:]
+    lines = path.read_text(encoding="utf-8-sig").splitlines()[-KEEP_LINES:]
     fd, tmp = tempfile.mkstemp(dir=str(path.parent), prefix=".calls-", suffix=".tmp")
     try:
         with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as fh:
@@ -85,7 +86,7 @@ def read(path: Path) -> List[Dict[str, Any]]:
     """Every parseable row, oldest first. A torn or foreign line is skipped, not fatal."""
     rows: List[Dict[str, Any]] = []
     try:
-        with open(path, encoding="utf-8") as fh:
+        with open(path, encoding="utf-8-sig") as fh:
             for line in fh:
                 try:
                     row = json.loads(line)
@@ -154,20 +155,35 @@ def _table(header: List[str], body: List[List[str]]) -> List[str]:
     return out
 
 
+def local_day(ts: Any) -> str:
+    """The local calendar day of a row's timestamp, as YYYY-MM-DD ("unknown" when it has none)."""
+    try:
+        return time.strftime("%Y-%m-%d", time.localtime(float(ts)))
+    except (TypeError, ValueError, OverflowError, OSError):
+        return "unknown"
+
+
 def summarize(rows: List[Dict[str, Any]], *, title: str, by: str = "aux_task") -> str:
-    """Per-``by`` totals (calls, failures, input and output tokens, wall time) as plain text."""
+    """Per-``by`` totals (calls, failures, input and output tokens, wall time) as plain text.
+
+    ``by="day"`` groups by local calendar day, newest day first; every other grouping puts the
+    group with the most tokens first."""
     if not rows:
         return f"Auxiliary LLM calls, {title}: none recorded."
     groups: Dict[str, Dict[str, float]] = {}
     for row in rows:
-        key = str(row.get(by) or "unknown")
+        key = local_day(row.get("ts")) if by == "day" else str(row.get(by) or "unknown")
         g = groups.setdefault(key, {"calls": 0, "failed": 0, "in": 0, "out": 0, "secs": 0.0})
         g["calls"] += 1
         g["failed"] += 1 if row.get("error_type") else 0
         g["in"] += sum(_count(row.get(f)) for f in _PROMPT_FIELDS)
         g["out"] += _count(row.get("output_tokens"))
         g["secs"] += float(row.get("duration_s") or 0.0)
-    ordered = sorted(groups.items(), key=lambda kv: (-(kv[1]["in"] + kv[1]["out"]), kv[0]))
+    if by == "day":
+        # Rows without a usable time go last.
+        ordered = sorted(groups.items(), key=lambda kv: (kv[0] != "unknown", kv[0]), reverse=True)
+    else:
+        ordered = sorted(groups.items(), key=lambda kv: (-(kv[1]["in"] + kv[1]["out"]), kv[0]))
     total = {k: sum(g[k] for g in groups.values()) for k in ("calls", "failed", "in", "out", "secs")}
 
     def cells(name: str, g: Dict[str, float]) -> List[str]:

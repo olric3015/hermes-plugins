@@ -27,11 +27,12 @@ _HELP = """\
   /aux 7d          the last 7 days (any number of hours or days: 6h, 30d)
   /aux models      add to any of the above to group by model instead of task
   /aux providers   add to any of the above to group by provider instead of task
+  /aux days        add to any of the above to group by day, newest first
   /aux clear       delete the ledger
 """
 
 _TITLES = {"day": "last 24 hours", "session": "latest session", "all": "all recorded"}
-_GROUP_WORDS = {"models": "model", "providers": "provider"}
+_GROUP_WORDS = {"models": "model", "providers": "provider", "days": "day"}
 
 
 def _ledger_path() -> Path:
@@ -70,5 +71,5 @@ def _handle_aux(raw_args: str = "") -> Optional[str]:
 
 def register(ctx) -> None:
     ctx.register_hook("post_auxiliary_call", _on_post_auxiliary_call)
-    ctx.register_command("aux", handler=_handle_aux, args_hint="[session|all|7d] [models|providers] | clear",
+    ctx.register_command("aux", handler=_handle_aux, args_hint="[session|all|7d] [models|providers|days] | clear",
                          description="Show what Hermes's auxiliary LLM calls (titling, compression, ...) cost.")

@@ -12,6 +12,7 @@ import os
 import shutil
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
@@ -56,7 +57,7 @@ def main() -> int:
             raise AssertionError("the scripted 500 did not fail the auxiliary call")
 
         ledger_file = HOME / "plugin-data" / "aux-ledger" / "calls.jsonl"
-        raw = ledger_file.read_text(encoding="utf-8")
+        raw = ledger_file.read_text(encoding="utf-8-sig")
         rows = [json.loads(line) for line in raw.splitlines()]
         print(f"hermes sent {len(srv.aux_requests())} auxiliary request(s); ledger holds {len(rows)} row(s)")
         assert len(rows) == len(srv.aux_requests()) >= 3, "one row per provider attempt"
@@ -82,6 +83,15 @@ def main() -> int:
         named = [line.split()[0] for line in by_provider[3:by_provider.index("", 3)]]
         assert by_provider[2].split()[0] == "provider"
         assert set(named) == {r["provider"] or "unknown" for r in rows} | {"total"}
+        days = aux_command("all days").splitlines()
+        print("\n".join(days))
+        expected_days = {}
+        for row in rows:
+            day = time.strftime("%Y-%m-%d", time.localtime(row["ts"]))
+            expected_days[day] = expected_days.get(day, 0) + 1
+        assert days[2].split()[0] == "day"
+        assert [line.split()[:2] for line in days[3:3 + len(expected_days)]] == [
+            [day, str(count)] for day, count in sorted(expected_days.items(), reverse=True)]
         assert aux_command("clear") == f"aux-ledger: deleted {len(rows)} recorded call(s)."
         assert not ledger_file.exists()
     print("E2E OK")

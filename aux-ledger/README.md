@@ -27,6 +27,7 @@ no configuration, no dependencies.
 /aux 7d          the last 7 days (any number of hours or days: 6h, 30d)
 /aux models      add to any of the above to group by model instead of task
 /aux providers   add to any of the above to group by provider instead of task
+/aux days        add to any of the above to group by day, newest first
 /aux clear       delete the ledger
 ```
 
@@ -53,6 +54,22 @@ total                 5       3  1,321      62  1.1s
 - **time** is the wall time of the attempts.
 - Streamed and failed attempts carry no usage from Hermes; they are counted, with zero tokens,
   and the footer says how many there were.
+
+`/aux days` puts one day on each line, newest day first, so the day a long session kept
+compressing stands out. Days are your computer's local calendar days, and a day with no
+auxiliary calls has no line. Example (the plugin's own output for a sample week):
+
+```
+Auxiliary LLM calls, last 7 days:
+
+day         calls  failed    input  output   time
+2026-10-06      5       1  106,105   5,250  1m17s
+2026-10-05      1       0      290       9   0.7s
+2026-10-04      2       0   41,310   2,111  19.2s
+total           8       1  147,705   7,370  1m37s
+
+1 call(s) reported no token usage (streamed or failed).
+```
 
 ## What is recorded
 
@@ -87,6 +104,9 @@ hermes plugins validate aux-ledger
 
 ## Changes
 
+- **1.2.0**: `/aux days`, one line per day with auxiliary calls, newest day first; works with
+  every window (`/aux 30d days`). The ledger also reads correctly after a Windows tool has saved
+  it with a byte-order mark. What is recorded did not change.
 - **1.1.0**: time windows (`/aux 6h`, `/aux 7d`, any number of hours or days) and grouping by
   provider (`/aux providers`). What is recorded did not change.
 - **1.0.0**: first release.

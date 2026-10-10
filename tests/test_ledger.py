@@ -149,3 +149,51 @@ def test_summary_by_provider(ledger):
     # A call that reported no provider is grouped, not dropped.
     assert lines[4].split()[:4] == ["unknown", "1", "0", "5"]
     assert lines[5].split()[:2] == ["total", "3"]
+
+
+def _local(year, month, day, hour=12, minute=0):
+    from datetime import datetime
+
+    return datetime(year, month, day, hour, minute).timestamp()
+
+
+def test_summary_by_day_is_newest_day_first(ledger):
+    rows = [ledger.build_row(_payload(ended_at=_local(2027, 1, 8, 9))),
+            ledger.build_row(_payload(ended_at=_local(2027, 1, 10, 0, 1), usage=None,
+                                      error_type="APITimeoutError")),
+            ledger.build_row(_payload(ended_at=_local(2027, 1, 10, 23, 59), aux_task="vision")),
+            ledger.build_row(_payload(ended_at=_local(2027, 1, 9, 23, 59),
+                                      usage={"input_tokens": 50, "output_tokens": 8})),
+            ledger.build_row(_payload(ended_at=_local(2027, 1, 9, 0, 0),
+                                      usage={"input_tokens": 50, "output_tokens": 8}))]
+    lines = ledger.summarize(rows, title="last 7 days", by="day").splitlines()
+    assert lines[2].split() == ["day", "calls", "failed", "input", "output", "time"]
+    # Days, not token totals, set the order: the smallest day can sit above a bigger one.
+    assert lines[3].split() == ["2027-01-10", "2", "1", "1,000", "120", "2.5s"]
+    assert lines[4].split() == ["2027-01-09", "2", "0", "100", "16", "2.5s"]
+    assert lines[5].split() == ["2027-01-08", "1", "0", "1,000", "120", "1.2s"]
+    assert lines[6].split() == ["total", "5", "1", "2,100", "256", "6.2s"]
+
+
+def test_day_of_a_row_without_a_time_goes_last(ledger):
+    assert ledger.local_day(_local(2027, 3, 4, 0, 0)) == "2027-03-04"
+    assert ledger.local_day(None) == ledger.local_day("soon") == ledger.local_day(1e300) == "unknown"
+    rows = [{"aux_task": "vision"}, ledger.build_row(_payload(ended_at=_local(2027, 1, 2))),
+            ledger.build_row(_payload(ended_at=_local(2027, 1, 1)))]
+    lines = ledger.summarize(rows, title="x", by="day").splitlines()
+    assert [line.split()[0] for line in lines[3:7]] == ["2027-01-02", "2027-01-01", "unknown", "total"]
+
+
+BOM = "\ufeff".encode("utf-8")
+
+
+def test_a_ledger_saved_with_a_bom_still_reads_and_trims(ledger, tmp_path, monkeypatch):
+    # Windows tools (PowerShell's Set-Content, some editors) add a BOM to files they touch.
+    path = tmp_path / ledger.FILENAME
+    path.write_bytes(BOM + (json.dumps(ledger.build_row(_payload(aux_task="bom"))) + "\n").encode("utf-8"))
+    assert [r["aux_task"] for r in ledger.read(path)] == ["bom"]
+    monkeypatch.setattr(ledger, "MAX_BYTES", 10)
+    monkeypatch.setattr(ledger, "KEEP_LINES", 2)
+    ledger.append(path, ledger.build_row(_payload(aux_task="next")))
+    assert [r["aux_task"] for r in ledger.read(path)] == ["bom", "next"]
+    assert not path.read_bytes().startswith(BOM), "the trim rewrites the file without the BOM"

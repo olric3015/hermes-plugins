@@ -197,3 +197,41 @@ def test_a_ledger_saved_with_a_bom_still_reads_and_trims(ledger, tmp_path, monke
     ledger.append(path, ledger.build_row(_payload(aux_task="next")))
     assert [r["aux_task"] for r in ledger.read(path)] == ["bom", "next"]
     assert not path.read_bytes().startswith(BOM), "the trim rewrites the file without the BOM"
+
+
+def test_recent_lists_newest_first(ledger):
+    rows = [ledger.build_row(_payload(ended_at=NOW - 3 * 86400 - 5, aux_task="vision", model="m-old")),
+            ledger.build_row(_payload(ended_at=NOW - 2 * 3600 - 1, model="", usage=None,
+                                      error_type="APITimeoutError", api_duration=75.4)),
+            ledger.build_row(_payload(ended_at=NOW - 125, aux_task="title_generation",
+                                      usage={"input_tokens": 1234, "output_tokens": 9})),
+            ledger.build_row(_payload(ended_at=NOW - 7))]
+    lines = ledger.recent(rows, NOW, title="all recorded").splitlines()
+    assert lines[0] == "Auxiliary LLM calls, all recorded, newest 4 of 4:"
+    assert lines[2].split() == ["when", "task", "model", "input", "output", "time", "result"]
+    # input is fresh input plus cache reads and writes, as in the summary.
+    assert lines[3].split() == ["7s", "ago", "compression", "m-small", "1,000", "120", "1.2s", "ok"]
+    assert lines[4].split() == ["2m", "ago", "title_generation", "m-small", "1,234", "9", "1.2s", "ok"]
+    assert lines[5].split() == ["2h", "ago", "compression", "unknown", "0", "0", "1m15s", "APITimeoutError"]
+    assert lines[6].split() == ["3d", "ago", "vision", "m-old", "1,000", "120", "1.2s", "ok"]
+    limited = ledger.recent(rows, NOW, title="x", limit=2).splitlines()
+    assert limited[0] == "Auxiliary LLM calls, x, newest 2 of 4:" and len(limited) == 5
+    assert [line.split()[2] for line in limited[3:]] == ["compression", "title_generation"]
+    assert ledger.recent([], NOW, title="last 7 days") == "Auxiliary LLM calls, last 7 days: none recorded."
+    # A clock that moved backwards, or a row without a time, is never a negative age.
+    assert ledger.recent([ledger.build_row(_payload(ended_at=NOW + 50))], NOW, title="x").splitlines()[3].startswith("0s ago")
+
+
+def test_default_recent_limit_is_ten(ledger):
+    rows = [ledger.build_row(_payload(ended_at=NOW - 100 + i, aux_task=f"t{i}")) for i in range(14)]
+    lines = ledger.recent(rows, NOW, title="x").splitlines()
+    assert lines[0] == "Auxiliary LLM calls, x, newest 10 of 14:"
+    assert [line.split()[2] for line in lines[3:]] == [f"t{i}" for i in range(13, 3, -1)]
+
+
+@pytest.mark.parametrize("seconds, shown", [
+    (0, "0s ago"), (59.9, "59s ago"), (60, "1m ago"), (3599, "59m ago"), (3600, "1h ago"),
+    (86399, "23h ago"), (86400, "1d ago"), (40 * 86400, "40d ago")])
+def test_recent_ages_change_unit_at_the_boundary(ledger, seconds, shown):
+    line = ledger.recent([ledger.build_row(_payload(ended_at=NOW - seconds))], NOW, title="x").splitlines()[3]
+    assert line.startswith(shown + " ")

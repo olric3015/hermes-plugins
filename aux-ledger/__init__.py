@@ -28,6 +28,7 @@ _HELP = """\
   /aux models      add to any of the above to group by model instead of task
   /aux providers   add to any of the above to group by provider instead of task
   /aux days        add to any of the above to group by day, newest first
+  /aux recent      add to any of the above to list the newest 10 calls instead
   /aux clear       delete the ledger
 """
 
@@ -52,7 +53,7 @@ def _on_post_auxiliary_call(**payload: Any) -> None:
 
 def _handle_aux(raw_args: str = "") -> Optional[str]:
     words = (raw_args or "").lower().split()
-    known = {"session", "all", "clear", "day", *_GROUP_WORDS}
+    known = {"session", "all", "clear", "day", "recent", *_GROUP_WORDS}
     spans = [w for w in words if ledger.parse_span(w)]
     unknown = [w for w in words if w not in known and w not in spans]
     if unknown:
@@ -64,12 +65,16 @@ def _handle_aux(raw_args: str = "") -> Optional[str]:
     title, span = _TITLES[window], ledger.DAY_SECONDS
     if window == "day" and spans:
         title, span = ledger.span_title(spans[0]), ledger.parse_span(spans[0])
+    now = time.time()
+    rows = ledger.select(ledger.read(path), window, now, span)
+    if "recent" in words:
+        return ledger.recent(rows, now, title=title)
     by = next((_GROUP_WORDS[w] for w in words if w in _GROUP_WORDS), "aux_task")
-    rows = ledger.select(ledger.read(path), window, time.time(), span)
     return ledger.summarize(rows, title=title, by=by)
 
 
 def register(ctx) -> None:
     ctx.register_hook("post_auxiliary_call", _on_post_auxiliary_call)
-    ctx.register_command("aux", handler=_handle_aux, args_hint="[session|all|7d] [models|providers|days] | clear",
+    ctx.register_command("aux", handler=_handle_aux,
+                         args_hint="[session|all|7d] [models|providers|days|recent] | clear",
                          description="Show what Hermes's auxiliary LLM calls (titling, compression, ...) cost.")

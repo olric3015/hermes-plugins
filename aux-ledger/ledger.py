@@ -19,6 +19,7 @@ FILENAME = "calls.jsonl"
 MAX_BYTES = 2_000_000
 KEEP_LINES = 5000
 DAY_SECONDS = 86400.0
+RECENT_ROWS = 10
 _SPAN_UNITS = {"h": 3600.0, "d": DAY_SECONDS}
 
 _TOKEN_FIELDS = ("input_tokens", "output_tokens", "cache_read_tokens", "cache_write_tokens",
@@ -144,6 +145,29 @@ def _duration(seconds: float) -> str:
         return f"{seconds:.1f}s"
     minutes, rest = divmod(int(round(seconds)), 60)
     return f"{minutes}m{rest:02d}s"
+
+
+def _age(seconds: float) -> str:
+    seconds = max(0.0, seconds)
+    for size, unit in ((DAY_SECONDS, "d"), (3600.0, "h"), (60.0, "m")):
+        if seconds >= size:
+            return f"{int(seconds // size)}{unit} ago"
+    return f"{int(seconds)}s ago"
+
+
+def recent(rows: List[Dict[str, Any]], now: float, *, title: str, limit: int = RECENT_ROWS) -> str:
+    """The newest ``limit`` attempts of ``rows``, newest first, one line each."""
+    if not rows:
+        return f"Auxiliary LLM calls, {title}: none recorded."
+    newest = rows[-limit:][::-1]
+    body = [[_age(now - float(r.get("ts") or 0.0)), str(r.get("aux_task") or "unknown"),
+             str(r.get("model") or "unknown"),
+             f"{sum(_count(r.get(f)) for f in _PROMPT_FIELDS):,}", f"{_count(r.get('output_tokens')):,}",
+             _duration(float(r.get("duration_s") or 0.0)), str(r.get("error_type") or "ok")]
+            for r in newest]
+    lines = [f"Auxiliary LLM calls, {title}, newest {len(newest)} of {len(rows)}:", ""]
+    lines += _table(["when", "task", "model", "input", "output", "time", "result"], body)
+    return "\n".join(lines)
 
 
 def _table(header: List[str], body: List[List[str]]) -> List[str]:

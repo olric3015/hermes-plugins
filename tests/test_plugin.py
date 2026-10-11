@@ -106,3 +106,20 @@ def test_command_days(wired):
     assert aux("session days").splitlines()[0] == "Auxiliary LLM calls, latest session:"
     assert aux("all days").splitlines()[2].split()[0] == "day"
     assert "/aux days" in aux("help")
+
+
+def test_command_recent(wired):
+    hook, aux = wired.hooks["post_auxiliary_call"], wired.commands["aux"]
+    now = time.time()
+    _call(hook, ended_at=now - 5 * 86400, aux_task="vision", session_id="old")
+    _call(hook, ended_at=now - 30, error_type="APIConnectionError", usage=None)
+    listing = aux("7d recent").splitlines()
+    assert listing[0] == "Auxiliary LLM calls, last 7 days, newest 2 of 2:"
+    assert listing[3].split()[2:] == ["compression", "m", "0", "0", "0.5s", "APIConnectionError"]
+    assert listing[4].split()[:3] == ["5d", "ago", "vision"]
+    assert aux("recent").splitlines()[0] == "Auxiliary LLM calls, last 24 hours, newest 1 of 1:"
+    assert aux("session recent").splitlines()[0] == "Auxiliary LLM calls, latest session, newest 1 of 1:"
+    assert aux("all 1h recent").splitlines()[0] == "Auxiliary LLM calls, all recorded, newest 2 of 2:"
+    # recent lists calls, not groups, even with a grouping word next to it.
+    assert aux("all days recent").splitlines()[2].split()[0] == "when"
+    assert "/aux recent" in aux("help")

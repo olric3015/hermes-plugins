@@ -92,6 +92,16 @@ def main() -> int:
         assert days[2].split()[0] == "day"
         assert [line.split()[:2] for line in days[3:3 + len(expected_days)]] == [
             [day, str(count)] for day, count in sorted(expected_days.items(), reverse=True)]
+        listing = aux_command("all recent").splitlines()
+        print("\n".join(listing))
+        shown = min(len(rows), 10)
+        assert listing[0] == f"Auxiliary LLM calls, all recorded, newest {shown} of {len(rows)}:"
+        assert listing[2].split() == ["when", "task", "model", "input", "output", "time", "result"]
+        # Newest first: the failed compression attempts come before the titling call.
+        assert [line.split()[2] for line in listing[3:3 + shown]] == [
+            r["aux_task"] for r in rows[::-1][:shown]]
+        assert [line.split()[-1] for line in listing[3:3 + shown]] == [
+            r["error_type"] or "ok" for r in rows[::-1][:shown]]
         assert aux_command("clear") == f"aux-ledger: deleted {len(rows)} recorded call(s)."
         assert not ledger_file.exists()
     print("E2E OK")

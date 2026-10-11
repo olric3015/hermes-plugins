@@ -28,6 +28,7 @@ no configuration, no dependencies.
 /aux models      add to any of the above to group by model instead of task
 /aux providers   add to any of the above to group by provider instead of task
 /aux days        add to any of the above to group by day, newest first
+/aux recent      add to any of the above to list the newest 10 calls instead
 /aux clear       delete the ledger
 ```
 
@@ -71,6 +72,22 @@ total           8       1  147,705   7,370  1m37s
 1 call(s) reported no token usage (streamed or failed).
 ```
 
+`/aux recent` lists the newest 10 calls of the window one by one, newest first, so a slow or
+failed compression a few minutes ago can be found without reading the totals. **result** is
+`ok` or the exception class Hermes reported (never the error message). Example (the plugin's
+own output for sample rows):
+
+```
+Auxiliary LLM calls, last 7 days, newest 5 of 5:
+
+when                 task     model   input  output   time           result
+1m ago   title_generation   m-small     321      12   1.1s               ok
+39m ago       compression   m-small  40,310   1,990  21.2s               ok
+40m ago       compression   m-small       0       0  30.0s  APITimeoutError
+3h ago        compression   m-small  41,020   2,104  18.7s               ok
+2d ago             vision  m-vision   1,580      64   3.4s               ok
+```
+
 ## What is recorded
 
 One JSON line per attempt in `<HERMES_HOME>/plugin-data/aux-ledger/calls.jsonl` (per profile):
@@ -104,6 +121,8 @@ hermes plugins validate aux-ledger
 
 ## Changes
 
+- **1.3.0**: `/aux recent`, the newest 10 calls of any window, newest first, with their task,
+  model, tokens, time and result. What is recorded did not change.
 - **1.2.0**: `/aux days`, one line per day with auxiliary calls, newest day first; works with
   every window (`/aux 30d days`). The ledger also reads correctly after a Windows tool has saved
   it with a byte-order mark. What is recorded did not change.

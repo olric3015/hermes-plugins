@@ -21,6 +21,7 @@ FILENAME = "streams.jsonl"
 MAX_BYTES = 2_000_000
 KEEP_LINES = 5000
 DAY_SECONDS = 86400.0
+RECENT_ROWS = 10
 _SPAN_UNITS = {"h": 3600.0, "d": DAY_SECONDS}
 MAX_OPEN = 256
 OPEN_TTL_SECONDS = 3600.0
@@ -206,6 +207,38 @@ def _rate(row: Dict[str, Any]) -> Optional[float]:
         return None
     writing = float(row.get("duration_s") or 0.0) - float(ttft)
     return chars / writing if writing >= 0.05 else None
+
+
+def _age(seconds: float) -> str:
+    seconds = max(0.0, seconds)
+    for size, unit in ((DAY_SECONDS, "d"), (3600.0, "h"), (60.0, "m")):
+        if seconds >= size:
+            return f"{int(seconds // size)}{unit} ago"
+    return f"{int(seconds)}s ago"
+
+
+def _result(row: Dict[str, Any]) -> str:
+    if row.get("failed"):
+        return "failed"
+    return "ok" if row.get("finished") else "unfinished"
+
+
+def recent(rows: List[Dict[str, Any]], now: float, *, title: str, limit: int = RECENT_ROWS) -> str:
+    """The newest ``limit`` streams of ``rows``, newest first, one line each."""
+    if not rows:
+        return f"Streaming speed, {title}: no streams recorded."
+    newest = rows[-limit:][::-1]
+    body = []
+    for row in newest:
+        ttft, rate = row.get("ttft_s"), _rate(row)
+        body.append([_age(now - float(row.get("ts") or 0.0)), str(row.get("model") or "unknown"),
+                     str(row.get("provider") or "unknown"),
+                     _seconds(None if ttft is None else float(ttft)),
+                     _seconds(float(row.get("duration_s") or 0.0)),
+                     "-" if rate is None else f"{rate:.0f}", _result(row)])
+    lines = [f"Streaming speed, {title}, newest {len(newest)} of {len(rows)}:", ""]
+    lines += _table(["when", "model", "provider", "first text", "total", "chars/s", "result"], body)
+    return "\n".join(lines)
 
 
 def _table(header: List[str], body: List[List[str]]) -> List[str]:

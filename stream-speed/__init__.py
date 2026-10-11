@@ -30,7 +30,8 @@ _HELP = """\
   /speed 7d          the last 7 days (any number of hours or days: 6h, 30d)
   /speed providers   add to any of the above to group by provider instead of model
   /speed days        add to any of the above to group by day, newest first
-  /speed clear      delete the record
+  /speed recent      add to any of the above to list the newest 10 streams instead
+  /speed clear       delete the record
 """
 
 _TITLES = {"day": "last 24 hours", "session": "latest session", "all": "all recorded"}
@@ -74,7 +75,7 @@ def _drain_at_exit() -> None:
 
 def _handle_speed(raw_args: str = "") -> Optional[str]:
     words = (raw_args or "").lower().split()
-    known = {"session", "all", "clear", "day", *_GROUP_WORDS}
+    known = {"session", "all", "clear", "day", "recent", *_GROUP_WORDS}
     spans = [w for w in words if timing.parse_span(w)]
     unknown = [w for w in words if w not in known and w not in spans]
     if unknown:
@@ -86,8 +87,11 @@ def _handle_speed(raw_args: str = "") -> Optional[str]:
     title, span = _TITLES[window], timing.DAY_SECONDS
     if window == "day" and spans:
         title, span = timing.span_title(spans[0]), timing.parse_span(spans[0])
+    now = time.time()
+    rows = timing.select(timing.read(path), window, now, span)
+    if "recent" in words:
+        return timing.recent(rows, now, title=title)
     by = next((_GROUP_WORDS[w] for w in words if w in _GROUP_WORDS), "model")
-    rows = timing.select(timing.read(path), window, time.time(), span)
     return timing.summarize(rows, title=title, by=by)
 
 
@@ -95,6 +99,6 @@ def register(ctx) -> None:
     ctx.register_hook("on_stream_start", _on_stream_start)
     ctx.register_hook("on_stream_delta", _on_stream_delta)
     ctx.register_hook("on_stream_end", _on_stream_end)
-    ctx.register_command("speed", handler=_handle_speed, args_hint="[session|all|7d] [providers|days] | clear",
+    ctx.register_command("speed", handler=_handle_speed, args_hint="[session|all|7d] [providers|days|recent] | clear",
                          description="Show how fast each model starts answering and how fast it writes.")
     atexit.register(_drain_at_exit)

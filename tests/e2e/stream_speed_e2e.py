@@ -91,6 +91,14 @@ def main() -> int:
     assert days[2].split()[0] == "day"
     assert [line.split()[:2] for line in days[3:3 + len(expected_days)]] == [
         [day, str(count)] for day, count in sorted(expected_days.items(), reverse=True)]
+    listing = speed("all recent").splitlines()
+    print("\n".join(listing))
+    assert listing[0] == "Streaming speed, all recorded, newest 2 of 2:"
+    assert listing[2].split() == ["when", "model", "provider", "first", "text", "total", "chars/s", "result"]
+    for line, row in zip(listing[3:5], rows[::-1]):
+        cells = line.split()
+        assert cells[2:4] == ["fake-model", row["provider"] or "unknown"] and cells[-1] == "ok"
+        assert cells[4:6] == [f"{row['ttft_s']:.2f}s", f"{row['duration_s']:.2f}s"]
     # Each one-shot turn is its own session, so the latest session holds exactly the last stream.
     assert rows[-1]["session_id"] and rows[0]["session_id"] != rows[-1]["session_id"]
     session = speed("session").splitlines()

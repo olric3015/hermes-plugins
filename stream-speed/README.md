@@ -25,6 +25,7 @@ Requires Hermes 0.21.5 or newer. No API key, no configuration, no dependencies.
 /speed 7d          the last 7 days (any number of hours or days: 6h, 30d)
 /speed providers   add to any of the above to group by provider instead of model
 /speed days        add to any of the above to group by day, newest first
+/speed recent      add to any of the above to list the newest 10 streams instead
 /speed clear       delete the record
 ```
 
@@ -64,6 +65,22 @@ day         streams  failed  first text    p90  chars/s
 2026-10-04        3       0       0.90s  1.10s      139
 
 1 stream(s) carried no text (tool calls only, or failed before any).
+```
+
+`/speed recent` lists the newest 10 streams of the window one by one, newest first, so the one
+slow answer behind a median can be found. **total** is the whole stream, and **result** is `ok`,
+`failed` (the stream errored) or `unfinished` (it ended without finishing). Example (the
+plugin's own output for sample rows):
+
+```
+Streaming speed, last 7 days, newest 5 of 5:
+
+when       model    provider  first text   total  chars/s      result
+1m ago   m-small      custom       1.12s   4.95s      452          ok
+40m ago  m-large  openrouter       0.74s   7.88s      370          ok
+42m ago  m-large  openrouter           -  30.00s        -  unfinished
+3h ago   m-small      custom       1.37s   6.02s      406          ok
+2d ago   m-large  openrouter       0.82s   9.41s      363          ok
 ```
 
 ## How accurate it is
@@ -112,6 +129,9 @@ hermes plugins validate stream-speed
 
 ## Changes
 
+- **1.3.0**: `/speed recent`, the newest 10 streams of any window, newest first, with their
+  model, provider, time to first text, total time, writing speed and result. What is recorded
+  did not change.
 - **1.2.0**: `/speed days`, one line per day with streams, newest day first; works with every
   window (`/speed 30d days`). The record also reads correctly after a Windows tool has saved it
   with a byte-order mark. What is recorded did not change.

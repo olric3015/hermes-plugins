@@ -334,3 +334,59 @@ def test_a_record_saved_with_a_bom_still_reads_and_trims(timing, tmp_path, monke
     timing.append(path, _row("m-next", 1.0, 2.0, 10))
     assert [r["model"] for r in timing.read(path)] == ["m-bom", "m-next"]
     assert not path.read_bytes().startswith(BOM), "the trim rewrites the file without the BOM"
+
+
+def test_recent_lists_newest_first(timing):
+    rows = [dict(_srow("m-old", "s1", "p1", NOW - 3 * 86400 - 5)),
+            dict(_row("m-cut", None, 9.0, 0, ts=NOW - 2 * 3600 - 1, finished=False), provider="p2"),
+            dict(_row("m-err", 1.0, 2.0, 10, ts=NOW - 125, failed=True)),
+            dict(_srow("m-new", "s3", "p1", NOW - 7), ttft_s=0.4, duration_s=2.4, chars=400)]
+    lines = timing.recent(rows, NOW, title="all recorded").splitlines()
+    assert lines[0] == "Streaming speed, all recorded, newest 4 of 4:"
+    assert lines[2].split() == ["when", "model", "provider", "first", "text", "total", "chars/s", "result"]
+    assert lines[3].split() == ["7s", "ago", "m-new", "p1", "0.40s", "2.40s", "200", "ok"]
+    # A row recorded without a provider, and a failed stream, are listed, not dropped.
+    assert lines[4].split() == ["2m", "ago", "m-err", "unknown", "1.00s", "2.00s", "10", "failed"]
+    assert lines[5].split() == ["2h", "ago", "m-cut", "p2", "-", "9.00s", "-", "unfinished"]
+    assert lines[6].split() == ["3d", "ago", "m-old", "p1", "1.00s", "2.00s", "10", "ok"]
+    limited = timing.recent(rows, NOW, title="x", limit=2).splitlines()
+    assert limited[0] == "Streaming speed, x, newest 2 of 4:" and len(limited) == 5
+    assert [line.split()[2] for line in limited[3:]] == ["m-new", "m-err"]
+    assert timing.recent([], NOW, title="last 7 days") == "Streaming speed, last 7 days: no streams recorded."
+    # A clock that moved backwards, or a row without a time, is never a negative age.
+    assert timing.recent([_row("m", 1.0, 2.0, 10, ts=NOW + 50)], NOW, title="x").splitlines()[3].startswith("0s ago")
+
+
+def test_default_recent_limit_is_ten(timing):
+    rows = [_row(f"m{i}", 1.0, 2.0, 10, ts=NOW - 100 + i) for i in range(14)]
+    lines = timing.recent(rows, NOW, title="x").splitlines()
+    assert lines[0] == "Streaming speed, x, newest 10 of 14:"
+    assert [line.split()[2] for line in lines[3:]] == [f"m{i}" for i in range(13, 3, -1)]
+
+
+@pytest.mark.parametrize("seconds, shown", [
+    (0, "0s ago"), (59.9, "59s ago"), (60, "1m ago"), (3599, "59m ago"), (3600, "1h ago"),
+    (86399, "23h ago"), (86400, "1d ago"), (40 * 86400, "40d ago")])
+def test_recent_ages_change_unit_at_the_boundary(timing, seconds, shown):
+    line = timing.recent([_row("m", 1.0, 2.0, 10, ts=NOW - seconds)], NOW, title="x").splitlines()[3]
+    assert line.startswith(shown + " ")
+
+
+def test_command_recent(speed_plugin, tmp_path, monkeypatch):
+    path = tmp_path / speed_plugin.timing.FILENAME
+    monkeypatch.setattr(speed_plugin, "_data_path", lambda: path)
+    ctx = _Ctx()
+    speed_plugin.register(ctx)
+    speed, now = ctx.commands["speed"], time.time()
+    for row in (_srow("m-week", "old", "p1", now - 5 * 86400), _srow("m-today", "new", "p2", now - 30)):
+        speed_plugin.timing.append(path, row)
+    listing = speed("7d recent").splitlines()
+    assert listing[0] == "Streaming speed, last 7 days, newest 2 of 2:"
+    assert listing[3].split()[2:] == ["m-today", "p2", "1.00s", "2.00s", "10", "ok"]
+    assert listing[4].split()[:3] == ["5d", "ago", "m-week"]
+    assert speed("recent").splitlines()[0] == "Streaming speed, last 24 hours, newest 1 of 1:"
+    assert speed("session recent").splitlines()[0] == "Streaming speed, latest session, newest 1 of 1:"
+    assert speed("all 1h recent").splitlines()[0] == "Streaming speed, all recorded, newest 2 of 2:"
+    # recent lists streams, not groups, even with a grouping word next to it.
+    assert speed("all providers recent").splitlines()[2].split()[0] == "when"
+    assert "/speed recent" in speed("help")

@@ -150,6 +150,9 @@ def main() -> int:
     assert listing[0] == "Approvals, all recorded, newest 5 of 5:"
     assert [line.split()[-2] for line in listing[3:]] == ["smart_approve", "deny", "smart_deny", "once", "deny"]
     assert listing[3].split()[1] == "ago" and len(listing) == 8
+    two = log("all recent 2").splitlines()
+    assert two[0] == "Approvals, all recorded, newest 2 of 5:" and [line.split()[2:] for line in two[3:]] == [line.split()[2:] for line in listing[3:5]]
+    assert log("recent 0").startswith("Unknown option: 0")
     assert log("clear") == "approval-ledger: deleted 5 recorded decision(s)." and not data.exists()
     print("E2E OK")
     return 0

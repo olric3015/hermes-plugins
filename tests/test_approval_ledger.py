@@ -335,6 +335,35 @@ def test_command_time_window_and_recent(wired, apledger):
     assert log("all 1h recent").splitlines()[0] == "Approvals, all recorded, newest 2 of 2:"
 
 
+@pytest.mark.parametrize("word, count", [
+    ("1", 1), ("25", 25), ("100", 100), ("007", 7),
+    ("0", None), ("101", None), ("1000", None), ("-5", None), ("2.5", None), ("٣", None), ("7d", None), ("9" * 5000, None),
+])
+def test_parse_count(apledger, word, count):
+    assert apledger.parse_count(word) == count
+
+
+def test_command_recent_row_count(wired, apledger):
+    ctx, path = wired
+    log = ctx.commands["approval-log"]
+    now = time.time()
+    for i in range(30):
+        apledger.append(path, _row(f"p{i}", "once", ts=now - 100 + i))
+    assert log("recent").splitlines()[0] == "Approvals, last 24 hours, newest 10 of 30:"
+    listing = log("recent 25").splitlines()
+    assert listing[0] == "Approvals, last 24 hours, newest 25 of 30:" and len(listing) == 28
+    assert listing[3].split()[2] == "p29" and listing[-1].split()[2] == "p5"
+    # The count may come before "recent", next to a window, and never exceeds what the window holds.
+    assert log("40 all recent").splitlines()[0] == "Approvals, all recorded, newest 30 of 30:"
+    assert log("recent 1h 3").splitlines()[0] == "Approvals, last 1 hour, newest 3 of 30:"
+    # Without "recent", or out of range, a number is an unknown option.
+    assert log("25").startswith("Unknown option: 25")
+    assert log("days 25").startswith("Unknown option: 25")
+    assert log("recent 0").startswith("Unknown option: 0")
+    assert log("recent 101").startswith("Unknown option: 101")
+    assert "/approval-log recent 25" in log("help")
+
+
 def test_hooks_never_raise(approvals_plugin, monkeypatch):
     def boom():
         raise OSError("read-only home")

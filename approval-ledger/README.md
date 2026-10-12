@@ -28,6 +28,7 @@ Requires Hermes 0.21.5 or newer. No API key, no configuration, no dependencies.
 /approval-log surfaces    add to any of the above to group by where it asked
 /approval-log days        add to any of the above to group by day, newest first
 /approval-log recent      add to any of the above to list the newest 10 decisions instead
+/approval-log recent 25   the newest 25 instead (1 to 100)
 /approval-log clear       delete the ledger
 ```
 
@@ -58,7 +59,8 @@ Smart-mode verdicts count as approved or denied; median wait is people's answers
   (messaging platforms, the TUI and Desktop), `smart`, `transport:<plugin>`, or an MCP/vault
   consent surface.
 
-`/approval-log recent` lists the newest decisions of the chosen window, newest first (same run):
+`/approval-log recent` lists the newest ten decisions of the chosen window, newest first
+(`/approval-log recent 25` lists 25, up to 100). From the same run:
 
 ```
 Approvals, all recorded, newest 5 of 5:
@@ -137,6 +139,8 @@ hermes plugins validate approval-ledger
 
 ## Changes
 
+- **1.2.0**: `/approval-log recent` takes a row count, `/approval-log recent 25` (1 to 100;
+  ten without one). What is recorded did not change.
 - **1.1.0**: `/approval-log days`, one line per day with decisions, newest day first; works
   with every window (`/approval-log 30d days`). What is recorded did not change.
 - **1.0.0**: first release.

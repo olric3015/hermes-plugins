@@ -20,6 +20,7 @@ MAX_BYTES = 2_000_000
 KEEP_LINES = 5000
 DAY_SECONDS = 86400.0
 RECENT_ROWS = 10
+MAX_RECENT_ROWS = 100
 _SPAN_UNITS = {"h": 3600.0, "d": DAY_SECONDS}
 
 APPROVED = frozenset({"once", "session", "always", "smart_approve"})
@@ -127,6 +128,14 @@ def parse_span(word: str) -> Optional[float]:
     if unit not in _SPAN_UNITS or not (number.isascii() and number.isdigit()) or len(number) > 4:
         return None
     return int(number) * _SPAN_UNITS[unit] or None
+
+
+def parse_count(word: str) -> Optional[int]:
+    """A row count for ``recent`` such as ``25``, from 1 to MAX_RECENT_ROWS; None when ``word`` is not one."""
+    if not (word.isascii() and word.isdigit()) or len(word) > 3:
+        return None
+    count = int(word)
+    return count if 1 <= count <= MAX_RECENT_ROWS else None
 
 
 def span_title(word: str) -> str:

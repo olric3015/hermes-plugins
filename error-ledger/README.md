@@ -28,6 +28,7 @@ Requires Hermes 0.21.5 or newer. No API key, no configuration, no dependencies.
 /errors reasons     add to any of the above to group by cause
 /errors days        add to any of the above to group by day, newest first
 /errors recent      add to any of the above to list the newest 10 failures instead
+/errors recent 25   the newest 25 instead (1 to 100)
 /errors clear       delete the ledger
 ```
 
@@ -81,7 +82,7 @@ One row per failed attempt Hermes reported; the retry after it may have succeede
 ```
 
 A time window counts back from now (`/errors 6h`, `/errors 7d reasons`, `/errors 30d days`,
-`/errors 30d recent`).
+`/errors 30d recent`). `/errors recent 50` lists more of them, up to 100.
 The ledger keeps its newest 5,000 rows, so a long window on a busy install reaches back only as
 far as those rows do.
 
@@ -127,6 +128,8 @@ hermes plugins validate error-ledger
 
 ## Changes
 
+- **1.3.0**: `/errors recent` takes a row count, `/errors recent 25` (1 to 100; ten without
+  one). What is recorded did not change.
 - **1.2.0**: `/errors days`, one line per day with failures, newest day first; works with
   every window (`/errors 30d days`). The ledger also reads correctly after a Windows tool has
   saved it with a byte-order mark. What is recorded did not change.

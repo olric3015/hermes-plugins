@@ -214,6 +214,35 @@ def test_default_recent_limit_is_ten(errledger):
     assert [line.split()[2] for line in lines[3:]] == [f"m{i}" for i in range(13, 3, -1)]
 
 
+@pytest.mark.parametrize("word, count", [
+    ("1", 1), ("25", 25), ("100", 100), ("007", 7),
+    ("0", None), ("101", None), ("1000", None), ("-5", None), ("2.5", None), ("٣", None), ("7d", None), ("9" * 5000, None),
+])
+def test_parse_count(errledger, word, count):
+    assert errledger.parse_count(word) == count
+
+
+def test_command_recent_row_count(wired):
+    ctx, path = wired
+    hook, errors = ctx.hooks["api_request_error"], ctx.commands["errors"]
+    now = time.time()
+    for i in range(30):
+        hook(**_payload(ended_at=now - 100 + i, model=f"m{i}"))
+    assert errors("recent").splitlines()[0] == "Provider errors, last 24 hours, newest 10 of 30:"
+    listing = errors("recent 25").splitlines()
+    assert listing[0] == "Provider errors, last 24 hours, newest 25 of 30:" and len(listing) == 28
+    assert listing[3].split()[2] == "m29" and listing[-1].split()[2] == "m5"
+    # The count may come before "recent", next to a window, and never exceeds what the window holds.
+    assert errors("40 all recent").splitlines()[0] == "Provider errors, all recorded, newest 30 of 30:"
+    assert errors("recent 1h 3").splitlines()[0] == "Provider errors, last 1 hour, newest 3 of 30:"
+    # Without "recent", or out of range, a number is an unknown option.
+    assert errors("25").startswith("Unknown option: 25")
+    assert errors("days 25").startswith("Unknown option: 25")
+    assert errors("recent 0").startswith("Unknown option: 0")
+    assert errors("recent 101").startswith("Unknown option: 101")
+    assert "/errors recent 25" in errors("help")
+
+
 def test_command_time_window_and_recent(wired):
     ctx, path = wired
     hook, errors = ctx.hooks["api_request_error"], ctx.commands["errors"]

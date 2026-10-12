@@ -106,6 +106,10 @@ def main() -> int:
     assert listing[3].split()[2:] == ["fake-model", newest["provider"], newest["reason"], str(newest["status"]),
                                       {True: "yes", False: "no"}.get(newest["retryable"], "-")]
     assert listing[3].split()[1] == "ago" and len(listing) == 3 + len(rows)
+    two = errors("all recent 2").splitlines()
+    assert two[0] == f"Provider errors, all recorded, newest {min(2, len(rows))} of {len(rows)}:"
+    assert two[3].split()[2:] == listing[3].split()[2:] and len(two) == 3 + min(2, len(rows))
+    assert errors("recent 0").startswith("Unknown option: 0")
     assert errors("clear") == f"error-ledger: deleted {len(rows)} recorded error(s)." and not data.exists()
     print("E2E OK")
     return 0

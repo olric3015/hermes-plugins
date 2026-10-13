@@ -1,0 +1,8 @@
+name: wait-ledger
+version: 1.0.0
+description: "Local ledger of the times Hermes stopped to wait for you (approval prompts, clarify questions, password prompts): how often, how they ended and how long it waited, shown by /waits."
+author: olric3015
+requires_hermes: ">=0.21.6"
+provides_hooks:
+  - on_human_input_request
+  - on_human_input_resolved

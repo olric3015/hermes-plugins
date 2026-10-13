@@ -73,3 +73,32 @@ jobs:
         env:
           PYTHONPATH: ${{ github.workspace }}/hermes
         run: hermes/.venv/bin/python tests/e2e/command_ledger_e2e.py
+
+  # wait-ledger needs the human-input hooks, first released in Hermes 0.21.6.
+  wait-ledger:
+    strategy:
+      fail-fast: false
+      matrix:
+        hermes: [v0.21.6, main]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: NousResearch/hermes-agent
+          ref: ${{ matrix.hermes }}
+          path: hermes
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v6
+      - name: Install Hermes
+        working-directory: hermes
+        run: uv sync --frozen --group dev
+      - name: Validate
+        working-directory: hermes
+        env:
+          HERMES_HOME: ${{ runner.temp }}/hermes-home
+        run: .venv/bin/python -m hermes_cli.main plugins validate "$GITHUB_WORKSPACE/wait-ledger"
+      - name: End to end (wait-ledger)
+        env:
+          PYTHONPATH: ${{ github.workspace }}/hermes
+        run: hermes/.venv/bin/python tests/e2e/wait_ledger_e2e.py

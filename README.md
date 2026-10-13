@@ -10,5 +10,6 @@ plugin with its own README.
 | [error-ledger](error-ledger/README.md) | Local ledger of failed provider calls (rate limits, overloads, timeouts): which model or provider they came from and why, shown by `/errors`. |
 | [approval-ledger](approval-ledger/README.md) | Local ledger of Hermes's approval prompts: which rules ask most, how the prompts end and how long you take to answer, shown by `/approval-log`. |
 | [command-ledger](command-ledger/README.md) | Local ledger of the slash commands you run in Hermes: which ones, how often, in how many sessions and when last, shown by `/command-log`. |
+| [wait-ledger](wait-ledger/README.md) | Local ledger of the times Hermes stopped to wait for you (approval prompts, clarify questions, password prompts): how often, how they ended and how long it waited, shown by `/waits`. |
 
 MIT licensed.

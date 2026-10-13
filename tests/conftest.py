@@ -69,3 +69,13 @@ def commands_plugin():
 @pytest.fixture
 def cmdledger(commands_plugin):
     return commands_plugin.ledger
+
+
+@pytest.fixture
+def waits_plugin():
+    return _load_plugin("wait-ledger")
+
+
+@pytest.fixture
+def wtledger(waits_plugin):
+    return waits_plugin.ledger

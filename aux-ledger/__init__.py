@@ -29,6 +29,7 @@ _HELP = """\
   /aux providers   add to any of the above to group by provider instead of task
   /aux days        add to any of the above to group by day, newest first
   /aux recent      add to any of the above to list the newest 10 calls instead
+  /aux recent 25   the newest 25 instead (1 to 100)
   /aux clear       delete the ledger
 """
 
@@ -55,7 +56,9 @@ def _handle_aux(raw_args: str = "") -> Optional[str]:
     words = (raw_args or "").lower().split()
     known = {"session", "all", "clear", "day", "recent", *_GROUP_WORDS}
     spans = [w for w in words if ledger.parse_span(w)]
-    unknown = [w for w in words if w not in known and w not in spans]
+    # A row count only means something after "recent"; anywhere else it is an unknown option.
+    counts = [w for w in words if "recent" in words and ledger.parse_count(w)]
+    unknown = [w for w in words if w not in known and w not in spans and w not in counts]
     if unknown:
         return _HELP if unknown[0] in {"help", "-h", "--help"} else f"Unknown option: {unknown[0]}\n\n{_HELP}"
     path = _ledger_path()
@@ -68,7 +71,8 @@ def _handle_aux(raw_args: str = "") -> Optional[str]:
     now = time.time()
     rows = ledger.select(ledger.read(path), window, now, span)
     if "recent" in words:
-        return ledger.recent(rows, now, title=title)
+        limit = ledger.parse_count(counts[0]) if counts else ledger.RECENT_ROWS
+        return ledger.recent(rows, now, title=title, limit=limit)
     by = next((_GROUP_WORDS[w] for w in words if w in _GROUP_WORDS), "aux_task")
     return ledger.summarize(rows, title=title, by=by)
 
@@ -76,5 +80,5 @@ def _handle_aux(raw_args: str = "") -> Optional[str]:
 def register(ctx) -> None:
     ctx.register_hook("post_auxiliary_call", _on_post_auxiliary_call)
     ctx.register_command("aux", handler=_handle_aux,
-                         args_hint="[session|all|7d] [models|providers|days|recent] | clear",
+                         args_hint="[session|all|7d] [models|providers|days|recent [N]] | clear",
                          description="Show what Hermes's auxiliary LLM calls (titling, compression, ...) cost.")

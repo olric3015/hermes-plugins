@@ -108,6 +108,26 @@ def test_command_days(wired):
     assert "/aux days" in aux("help")
 
 
+def test_command_recent_row_count(wired):
+    hook, aux = wired.hooks["post_auxiliary_call"], wired.commands["aux"]
+    now = time.time()
+    for i in range(30):
+        _call(hook, ended_at=now - 100 + i, model=f"m{i}")
+    assert aux("recent").splitlines()[0] == "Auxiliary LLM calls, last 24 hours, newest 10 of 30:"
+    listing = aux("recent 25").splitlines()
+    assert listing[0] == "Auxiliary LLM calls, last 24 hours, newest 25 of 30:" and len(listing) == 28
+    assert listing[3].split()[3] == "m29" and listing[-1].split()[3] == "m5"
+    # The count may come before "recent", next to a window, and never exceeds what the window holds.
+    assert aux("40 all recent").splitlines()[0] == "Auxiliary LLM calls, all recorded, newest 30 of 30:"
+    assert aux("recent 1h 3").splitlines()[0] == "Auxiliary LLM calls, last 1 hour, newest 3 of 30:"
+    # Without "recent", or out of range, a number is an unknown option.
+    assert aux("25").startswith("Unknown option: 25")
+    assert aux("days 25").startswith("Unknown option: 25")
+    assert aux("recent 0").startswith("Unknown option: 0")
+    assert aux("recent 101").startswith("Unknown option: 101")
+    assert "/aux recent 25" in aux("help")
+
+
 def test_command_recent(wired):
     hook, aux = wired.hooks["post_auxiliary_call"], wired.commands["aux"]
     now = time.time()

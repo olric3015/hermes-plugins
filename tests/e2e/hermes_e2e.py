@@ -102,6 +102,10 @@ def main() -> int:
             r["aux_task"] for r in rows[::-1][:shown]]
         assert [line.split()[-1] for line in listing[3:3 + shown]] == [
             r["error_type"] or "ok" for r in rows[::-1][:shown]]
+        two = aux_command("all recent 2").splitlines()
+        assert two[0] == f"Auxiliary LLM calls, all recorded, newest {min(2, len(rows))} of {len(rows)}:"
+        assert two[3].split()[2:] == listing[3].split()[2:] and len(two) == 3 + min(2, len(rows))
+        assert aux_command("recent 0").startswith("Unknown option: 0")
         assert aux_command("clear") == f"aux-ledger: deleted {len(rows)} recorded call(s)."
         assert not ledger_file.exists()
     print("E2E OK")

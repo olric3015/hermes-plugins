@@ -222,6 +222,15 @@ def test_recent_lists_newest_first(ledger):
     assert ledger.recent([ledger.build_row(_payload(ended_at=NOW + 50))], NOW, title="x").splitlines()[3].startswith("0s ago")
 
 
+@pytest.mark.parametrize("word, count", [
+    ("1", 1), ("25", 25), ("100", 100), ("007", 7),
+    ("0", None), ("101", None), ("1000", None), ("-5", None), ("2.5", None), ("\u0663", None), ("7d", None),
+    ("9" * 5000, None),
+])
+def test_parse_count(ledger, word, count):
+    assert ledger.parse_count(word) == count
+
+
 def test_default_recent_limit_is_ten(ledger):
     rows = [ledger.build_row(_payload(ended_at=NOW - 100 + i, aux_task=f"t{i}")) for i in range(14)]
     lines = ledger.recent(rows, NOW, title="x").splitlines()

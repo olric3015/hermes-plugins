@@ -29,6 +29,7 @@ no configuration, no dependencies.
 /aux providers   add to any of the above to group by provider instead of task
 /aux days        add to any of the above to group by day, newest first
 /aux recent      add to any of the above to list the newest 10 calls instead
+/aux recent 25   the newest 25 instead (1 to 100)
 /aux clear       delete the ledger
 ```
 
@@ -72,7 +73,8 @@ total           8       1  147,705   7,370  1m37s
 1 call(s) reported no token usage (streamed or failed).
 ```
 
-`/aux recent` lists the newest 10 calls of the window one by one, newest first, so a slow or
+`/aux recent` lists the newest 10 calls of the window one by one (`/aux recent 25` lists 25,
+up to 100), newest first, so a slow or
 failed compression a few minutes ago can be found without reading the totals. **result** is
 `ok` or the exception class Hermes reported (never the error message). Example (the plugin's
 own output for sample rows):
@@ -121,6 +123,8 @@ hermes plugins validate aux-ledger
 
 ## Changes
 
+- **1.4.0**: `/aux recent` takes a row count, `/aux recent 25` (1 to 100; ten without
+  one). What is recorded did not change.
 - **1.3.0**: `/aux recent`, the newest 10 calls of any window, newest first, with their task,
   model, tokens, time and result. What is recorded did not change.
 - **1.2.0**: `/aux days`, one line per day with auxiliary calls, newest day first; works with

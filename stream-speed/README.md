@@ -26,6 +26,7 @@ Requires Hermes 0.21.5 or newer. No API key, no configuration, no dependencies.
 /speed providers   add to any of the above to group by provider instead of model
 /speed days        add to any of the above to group by day, newest first
 /speed recent      add to any of the above to list the newest 10 streams instead
+/speed recent 25   the newest 25 instead (1 to 100)
 /speed clear       delete the record
 ```
 
@@ -67,7 +68,8 @@ day         streams  failed  first text    p90  chars/s
 1 stream(s) carried no text (tool calls only, or failed before any).
 ```
 
-`/speed recent` lists the newest 10 streams of the window one by one, newest first, so the one
+`/speed recent` lists the newest 10 streams of the window one by one (`/speed recent 25` lists
+25, up to 100), newest first, so the one
 slow answer behind a median can be found. **total** is the whole stream, and **result** is `ok`,
 `failed` (the stream errored) or `unfinished` (it ended without finishing). Example (the
 plugin's own output for sample rows):
@@ -129,6 +131,8 @@ hermes plugins validate stream-speed
 
 ## Changes
 
+- **1.4.0**: `/speed recent` takes a row count, `/speed recent 25` (1 to 100; ten without
+  one). What is recorded did not change.
 - **1.3.0**: `/speed recent`, the newest 10 streams of any window, newest first, with their
   model, provider, time to first text, total time, writing speed and result. What is recorded
   did not change.

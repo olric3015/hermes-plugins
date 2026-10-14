@@ -214,6 +214,15 @@ def test_span_words(timing, word, seconds):
     assert timing.parse_span(word) == seconds
 
 
+@pytest.mark.parametrize("word, count", [
+    ("1", 1), ("25", 25), ("100", 100), ("007", 7),
+    ("0", None), ("101", None), ("1000", None), ("-5", None), ("2.5", None), ("\u0663", None), ("7d", None),
+    ("9" * 5000, None),
+])
+def test_parse_count(timing, word, count):
+    assert timing.parse_count(word) == count
+
+
 def test_span_titles(timing):
     assert [timing.span_title(w) for w in ("1h", "6h", "1d", "30d")] == [
         "last 1 hour", "last 6 hours", "last 1 day", "last 30 days"]
@@ -390,3 +399,26 @@ def test_command_recent(speed_plugin, tmp_path, monkeypatch):
     # recent lists streams, not groups, even with a grouping word next to it.
     assert speed("all providers recent").splitlines()[2].split()[0] == "when"
     assert "/speed recent" in speed("help")
+
+
+def test_command_recent_row_count(speed_plugin, tmp_path, monkeypatch):
+    path = tmp_path / speed_plugin.timing.FILENAME
+    monkeypatch.setattr(speed_plugin, "_data_path", lambda: path)
+    ctx = _Ctx()
+    speed_plugin.register(ctx)
+    speed, now = ctx.commands["speed"], time.time()
+    for i in range(30):
+        speed_plugin.timing.append(path, _srow(f"m{i}", "s", "p1", now - 100 + i))
+    assert speed("recent").splitlines()[0] == "Streaming speed, last 24 hours, newest 10 of 30:"
+    listing = speed("recent 25").splitlines()
+    assert listing[0] == "Streaming speed, last 24 hours, newest 25 of 30:" and len(listing) == 28
+    assert listing[3].split()[2] == "m29" and listing[-1].split()[2] == "m5"
+    # The count may come before "recent", next to a window, and never exceeds what the window holds.
+    assert speed("40 all recent").splitlines()[0] == "Streaming speed, all recorded, newest 30 of 30:"
+    assert speed("recent 1h 3").splitlines()[0] == "Streaming speed, last 1 hour, newest 3 of 30:"
+    # Without "recent", or out of range, a number is an unknown option.
+    assert speed("25").startswith("Unknown option: 25")
+    assert speed("days 25").startswith("Unknown option: 25")
+    assert speed("recent 0").startswith("Unknown option: 0")
+    assert speed("recent 101").startswith("Unknown option: 101")
+    assert "/speed recent 25" in speed("help")

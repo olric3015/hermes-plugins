@@ -99,6 +99,11 @@ def main() -> int:
         cells = line.split()
         assert cells[2:4] == ["fake-model", row["provider"] or "unknown"] and cells[-1] == "ok"
         assert cells[4:6] == [f"{row['ttft_s']:.2f}s", f"{row['duration_s']:.2f}s"]
+    two = speed("all recent 1").splitlines()
+    print("\n".join(two))
+    assert two[0] == "Streaming speed, all recorded, newest 1 of 2:" and len(two) == 4
+    assert two[3].split()[2:] == listing[3].split()[2:]
+    assert speed("recent 0").startswith("Unknown option: 0")
     # Each one-shot turn is its own session, so the latest session holds exactly the last stream.
     assert rows[-1]["session_id"] and rows[0]["session_id"] != rows[-1]["session_id"]
     session = speed("session").splitlines()

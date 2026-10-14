@@ -88,7 +88,8 @@ def child() -> int:
     _cli()
     asyncio.run(_gateway())
     handler = get_plugin_commands()["command-log"]["handler"]
-    for args in ("", "all", "all platforms", "all days", "session", "all recent", "7d"):
+    for args in ("", "all", "all platforms", "all days", "session", "all recent", "all recent 2",
+                 "recent 0", "7d"):
         (HOME / f"report-{args.replace(' ', '_') or 'default'}.txt").write_text(handler(args), encoding="utf-8")
     return 0
 
@@ -141,6 +142,10 @@ def main() -> int:
     recent = report["report-all_recent"].splitlines()
     assert recent[0] == "Slash commands, all recorded, newest 5 of 5:"
     assert recent[3].split()[2:] == ["/usage", "telegram"] and recent[4].split()[2:] == ["/queue", "/q", "telegram"]
+    two = report["report-all_recent_2"].splitlines()
+    assert two[0] == "Slash commands, all recorded, newest 2 of 5:" and len(two) == 5
+    assert [line.split()[2:] for line in two[3:5]] == [line.split()[2:] for line in recent[3:5]]
+    assert report["report-recent_0"].startswith("Unknown option: 0")
     assert report["report-7d"].splitlines()[0] == "Slash commands, last 7 days:"
     print("command-ledger e2e: OK")
     return 0

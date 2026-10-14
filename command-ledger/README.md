@@ -27,6 +27,7 @@ Requires Hermes 0.21.5 or newer. No API key, no configuration, no dependencies.
 /command-log platforms   add to any of the above to group by platform (cli, telegram, ...)
 /command-log days        add to any of the above to group by day, newest first
 /command-log recent      add to any of the above to list the newest 10 commands instead
+/command-log recent 25   the newest 25 instead (1 to 100)
 /command-log clear       delete the ledger
 ```
 
@@ -56,7 +57,8 @@ The CLI counts Hermes's built-in commands; messaging platforms add plugin comman
   is where it ran instead: `cli`, `telegram`, `discord`, ...; grouped by `surfaces`, `cli` or
   `gateway`.
 
-`/command-log recent` lists the newest commands of the chosen window, newest first, with the
+`/command-log recent` lists the newest 10 commands of the chosen window (`/command-log recent 25`
+lists 25, up to 100), newest first, with the
 alias you typed (same run):
 
 ```
@@ -140,6 +142,8 @@ hermes plugins validate command-ledger
 
 ## Changes
 
+- **1.2.0**: `/command-log recent` takes a row count, `/command-log recent 25` (1 to 100;
+  ten without one). What is recorded did not change.
 - **1.1.0**: `/command-log days`, one line per day with commands, newest day first; works with
   every window (`/command-log 30d days`). What is recorded did not change.
 - **1.0.0**: first release.

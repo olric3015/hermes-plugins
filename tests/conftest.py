@@ -89,3 +89,13 @@ def stops_plugin():
 @pytest.fixture
 def stledger(stops_plugin):
     return stops_plugin.ledger
+
+
+@pytest.fixture
+def voice_plugin():
+    return _load_plugin("voice-ledger")
+
+
+@pytest.fixture
+def vcledger(voice_plugin):
+    return voice_plugin.ledger

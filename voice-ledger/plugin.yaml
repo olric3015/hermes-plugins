@@ -1,0 +1,7 @@
+name: voice-ledger
+version: 1.0.0
+description: "Local ledger of the voice messages and recordings Hermes transcribes: how many, from where, by which speech-to-text provider and model, and how much audio, shown by /voice-log."
+author: olric3015
+requires_hermes: ">=0.21.5"
+provides_hooks:
+  - pre_transcription

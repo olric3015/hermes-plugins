@@ -11,5 +11,6 @@ plugin with its own README.
 | [approval-ledger](approval-ledger/README.md) | Local ledger of Hermes's approval prompts: which rules ask most, how the prompts end and how long you take to answer, shown by `/approval-log`. |
 | [command-ledger](command-ledger/README.md) | Local ledger of the slash commands you run in Hermes: which ones, how often, in how many sessions and when last, shown by `/command-log`. |
 | [wait-ledger](wait-ledger/README.md) | Local ledger of the times Hermes stopped to wait for you (approval prompts, clarify questions, password prompts): how often, how they ended and how long it waited, shown by `/waits`. |
+| [stop-ledger](stop-ledger/README.md) | Local ledger of the turns you stopped while Hermes was still working (/stop, or /new during a running turn): how often, where and how recently, shown by `/stop-log`. |
 
 MIT licensed.

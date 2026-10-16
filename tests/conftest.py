@@ -79,3 +79,13 @@ def waits_plugin():
 @pytest.fixture
 def wtledger(waits_plugin):
     return waits_plugin.ledger
+
+
+@pytest.fixture
+def stops_plugin():
+    return _load_plugin("stop-ledger")
+
+
+@pytest.fixture
+def stledger(stops_plugin):
+    return stops_plugin.ledger

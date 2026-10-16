@@ -1,0 +1,7 @@
+name: stop-ledger
+version: 1.0.0
+description: "Local ledger of the turns you stopped while Hermes was still working (/stop, or /new during a running turn): how often, where and how recently, shown by /stop-log."
+author: olric3015
+requires_hermes: ">=0.21.5"
+provides_hooks:
+  - agent_loop_stopped

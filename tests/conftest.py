@@ -109,3 +109,13 @@ def interim_plugin():
 @pytest.fixture
 def imledger(interim_plugin):
     return interim_plugin.ledger
+
+
+@pytest.fixture
+def edits_plugin():
+    return _load_plugin("edit-ledger")
+
+
+@pytest.fixture
+def edledger(edits_plugin):
+    return edits_plugin.ledger

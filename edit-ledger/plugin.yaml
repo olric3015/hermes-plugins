@@ -1,0 +1,7 @@
+name: edit-ledger
+version: 1.0.0
+description: "Local ledger of the turns in which the agent changed files (write_file, patch): which models change files, how many per turn and of which file types, shown by /edit-log. Never stores a path or file name."
+author: olric3015
+requires_hermes: ">=0.21.5"
+provides_hooks:
+  - pre_verify

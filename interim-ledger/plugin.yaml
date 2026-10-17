@@ -1,0 +1,7 @@
+name: interim-ledger
+version: 1.0.0
+description: "Local ledger of the messages models write in the middle of a turn, before their final answer (the text that comes with a tool call): which models write them, how many per turn and how long, shown by /interim-log."
+author: olric3015
+requires_hermes: ">=0.21.5"
+provides_hooks:
+  - on_interim_message

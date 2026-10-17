@@ -13,5 +13,6 @@ plugin with its own README.
 | [wait-ledger](wait-ledger/README.md) | Local ledger of the times Hermes stopped to wait for you (approval prompts, clarify questions, password prompts): how often, how they ended and how long it waited, shown by `/waits`. |
 | [stop-ledger](stop-ledger/README.md) | Local ledger of the turns you stopped while Hermes was still working (/stop, or /new during a running turn): how often, where and how recently, shown by `/stop-log`. |
 | [voice-ledger](voice-ledger/README.md) | Local ledger of the voice messages and recordings Hermes transcribes: how many, from where, by which speech-to-text provider and model, and how much audio, shown by `/voice-log`. |
+| [interim-ledger](interim-ledger/README.md) | Local ledger of the messages models write in the middle of a turn, before their final answer (the text that comes with a tool call): which models write them, how many per turn and how long, shown by `/interim-log`. |
 
 MIT licensed.

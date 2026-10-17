@@ -99,3 +99,13 @@ def voice_plugin():
 @pytest.fixture
 def vcledger(voice_plugin):
     return voice_plugin.ledger
+
+
+@pytest.fixture
+def interim_plugin():
+    return _load_plugin("interim-ledger")
+
+
+@pytest.fixture
+def imledger(interim_plugin):
+    return interim_plugin.ledger

@@ -55,6 +55,7 @@ jobs:
           .venv/bin/python -m hermes_cli.main plugins validate "$GITHUB_WORKSPACE/command-ledger"
           .venv/bin/python -m hermes_cli.main plugins validate "$GITHUB_WORKSPACE/stop-ledger"
           .venv/bin/python -m hermes_cli.main plugins validate "$GITHUB_WORKSPACE/voice-ledger"
+          .venv/bin/python -m hermes_cli.main plugins validate "$GITHUB_WORKSPACE/interim-ledger"
       - name: End to end (aux-ledger)
         env:
           PYTHONPATH: ${{ github.workspace }}/hermes
@@ -83,6 +84,10 @@ jobs:
         env:
           PYTHONPATH: ${{ github.workspace }}/hermes
         run: hermes/.venv/bin/python tests/e2e/voice_ledger_e2e.py
+      - name: End to end (interim-ledger)
+        env:
+          PYTHONPATH: ${{ github.workspace }}/hermes
+        run: hermes/.venv/bin/python tests/e2e/interim_ledger_e2e.py
 
   # wait-ledger needs the human-input hooks, first released in Hermes 0.21.6.
   wait-ledger:

@@ -1,0 +1,5 @@
+name: unicode-ref
+version: 1.0.0
+description: "@unicode: references that spell text out character by character for the model: code points, Unicode names, and notes on invisible characters, text-direction controls, unusual spaces and lookalike letters."
+author: olric3015
+requires_hermes: ">=0.21.5"

@@ -129,3 +129,13 @@ def reactions_plugin():
 @pytest.fixture
 def rxledger(reactions_plugin):
     return reactions_plugin.ledger
+
+
+@pytest.fixture
+def unicode_plugin():
+    return _load_plugin("unicode-ref")
+
+
+@pytest.fixture
+def uchars(unicode_plugin):
+    return unicode_plugin.chars

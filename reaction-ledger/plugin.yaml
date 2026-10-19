@@ -1,0 +1,7 @@
+name: reaction-ledger
+version: 1.0.0
+description: "Local ledger of the emoji reactions people leave on messages in your Telegram chats with Hermes: which emoji, on how many messages, how recently, shown by /reaction-log."
+author: olric3015
+requires_hermes: ">=0.21.5"
+provides_hooks:
+  - gateway_platform_event

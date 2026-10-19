@@ -15,5 +15,6 @@ plugin with its own README.
 | [voice-ledger](voice-ledger/README.md) | Local ledger of the voice messages and recordings Hermes transcribes: how many, from where, by which speech-to-text provider and model, and how much audio, shown by `/voice-log`. |
 | [interim-ledger](interim-ledger/README.md) | Local ledger of the messages models write in the middle of a turn, before their final answer (the text that comes with a tool call): which models write them, how many per turn and how long, shown by `/interim-log`. |
 | [edit-ledger](edit-ledger/README.md) | Local ledger of the turns in which the agent changed files (write_file, patch): which models change files, how many per turn and of which file types, shown by `/edit-log`. Never stores a path or file name. |
+| [reaction-ledger](reaction-ledger/README.md) | Local ledger of the emoji reactions people leave on messages in your Telegram chats with Hermes: which emoji, on how many messages, in how many chats and how recently, shown by `/reaction-log`. |
 
 MIT licensed.

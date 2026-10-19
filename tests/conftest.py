@@ -119,3 +119,13 @@ def edits_plugin():
 @pytest.fixture
 def edledger(edits_plugin):
     return edits_plugin.ledger
+
+
+@pytest.fixture
+def reactions_plugin():
+    return _load_plugin("reaction-ledger")
+
+
+@pytest.fixture
+def rxledger(reactions_plugin):
+    return reactions_plugin.ledger

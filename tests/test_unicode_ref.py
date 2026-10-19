@@ -6,7 +6,7 @@ import types
 
 import pytest
 
-ZWSP, RLO, NBSP, CYR_ER = "​", "‮", " ", "р"
+ZWSP, RLO, NBSP, CYR_ER = "\u200b", "\u202e", "\u00a0", "\u0440"
 
 
 def _table(text):
@@ -47,7 +47,7 @@ def test_plain_text_says_nothing_is_hidden(uchars):
 
 
 def test_direction_controls_spaces_and_their_positions(uchars):
-    notes = uchars.notes(f"ab{RLO}cd{NBSP}e{NBSP}f⁦x⁩")
+    notes = uchars.notes(f"ab{RLO}cd{NBSP}e{NBSP}f\u2066x\u2069")
     assert notes[0] == ("3 invisible character(s): U+202E RIGHT-TO-LEFT OVERRIDE at 3; "
                         "U+2066 LEFT-TO-RIGHT ISOLATE at 10; U+2069 POP DIRECTIONAL ISOLATE at 12.")
     assert notes[1].startswith("Text direction controls (U+202E, U+2066, U+2069) change the order")
@@ -67,31 +67,31 @@ def test_tag_characters_are_decoded(uchars):
 
 
 def test_emoji_joiners_are_explained_not_alarming(uchars):
-    notes = uchars.notes("\U0001F468‍\U0001F4BB ❤️")
+    notes = uchars.notes("\U0001F468\u200d\U0001F4BB \u2764\ufe0f")
     assert notes[0] == ("2 invisible character(s): U+200D ZERO WIDTH JOINER at 2; "
                         "U+FE0F VARIATION SELECTOR-16 at 6.")
     assert notes[1].startswith("U+200D and U+FE0F are also how emoji are joined")
 
 
 @pytest.mark.parametrize("word, flagged", [
-    ("pаypal", True),          # Cyrillic a
-    ("οpen", True),            # Greek omicron
-    ("ａpple", True),           # fullwidth a
-    ("café", False),           # é is Latin
-    ("привет", False),  # all Cyrillic
-    ("abc中文", False),     # CJK next to Latin is not a lookalike
+    ("p\u0430ypal", True),          # Cyrillic a
+    ("\u03bfpen", True),            # Greek omicron
+    ("\uff41pple", True),           # fullwidth a
+    ("caf\u00e9", False),           # e with acute is Latin
+    ("\u043f\u0440\u0438\u0432\u0435\u0442", False),  # all Cyrillic
+    ("abc\u4e2d\u6587", False),     # CJK next to Latin is not a lookalike
 ])
 def test_mixed_scripts_only_for_lookalikes_next_to_latin(uchars, word, flagged):
     assert any("mixes" in n for n in uchars.notes(word)) is flagged
 
 
 def test_mixed_script_note_lists_at_most_five_letters(uchars):
-    [note] = uchars.notes("a" + "а" * 7)
+    [note] = uchars.notes("a" + "\u0430" * 7)
     assert note.count("U+0430") == 5 and note.endswith(" and more.")
 
 
 def test_private_use_and_unassigned_are_noted(uchars):
-    notes = uchars.notes("\U000E01F0")
+    notes = uchars.notes("\ue000\U000E01F0")
     assert notes[-2:] == ["U+E000 is private use at 1: no font shows it the same way.",
                           "U+E01F0 is unassigned at 2: no font shows it the same way."]
 
@@ -123,7 +123,7 @@ def test_is_invisible(uchars, cp, invisible):
 
 
 def test_combining_marks_and_spaces_are_not_drawn_alone(uchars):
-    rows = _table(uchars.expand("é \t"))
+    rows = _table(uchars.expand("e\u0301 \t"))
     assert [r[1].strip() for r in rows[1:]] == ["e", "", "", ""]
     assert rows[4][-1].strip() == "invisible" and rows[2][-1].strip() == "Mn"
 
@@ -133,7 +133,7 @@ def test_code_point_lookup(uchars):
     assert out.split("\n\n") == [
         "U+202E  RIGHT-TO-LEFT OVERRIDE\n  category Cf (format), invisible, changes text direction\n  UTF-8 E2 80 AE",
         "U+00E9  LATIN SMALL LETTER E WITH ACUTE\n  category Ll (lowercase letter)\n  UTF-8 C3 A9\n"
-        "  looks like: é\n  decomposes to: 0065 0301",
+        "  looks like: \u00e9\n  decomposes to: 0065 0301",
     ]
     assert uchars.expand("U+110000") == "U+110000 is not a Unicode code point (the last one is U+10FFFF)."
     assert uchars.expand("U+D800").splitlines()[2] == "  UTF-8 ED A0 80"

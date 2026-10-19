@@ -20,8 +20,8 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 HOME = Path(os.environ.get("UNICODE_E2E_HOME") or tempfile.mkdtemp(prefix="unicode-ref-e2e-"))
 ANSWER = "ANSWER-u41c all done"
-# A zero-width space inside one word, a Cyrillic "р" in a Latin one, and a no-break space.
-TEXT = "pa​ypal рaypal ok"
+# A zero-width space inside one word, a Cyrillic "\u0440" in a Latin one, and a no-break space.
+TEXT = "pa\u200bypal \u0440aypal\u00a0ok"
 
 
 def _env() -> dict:
@@ -80,7 +80,7 @@ def main() -> int:
     assert " 3        U+200B  ZERO WIDTH SPACE" in first
     assert "- 1 invisible character(s): U+200B ZERO WIDTH SPACE at 3." in first
     assert "- Spaces other than the ordinary one: U+00A0 NO-BREAK SPACE at 15." in first
-    assert "mixes CYRILLIC and LATIN letters: р U+0440 CYRILLIC SMALL LETTER ER at 9." in first
+    assert "mixes CYRILLIC and LATIN letters: \u0440 U+0440 CYRILLIC SMALL LETTER ER at 9." in first
     assert "plugin expansion error" not in first and "unsupported reference type" not in first
     # Code point lookups; the trailing "." is the sentence's, not part of the reference.
     assert "U+202E  RIGHT-TO-LEFT OVERRIDE" in second and "changes text direction" in second

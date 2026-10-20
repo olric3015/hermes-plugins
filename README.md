@@ -17,5 +17,6 @@ plugin with its own README.
 | [edit-ledger](edit-ledger/README.md) | Local ledger of the turns in which the agent changed files (write_file, patch): which models change files, how many per turn and of which file types, shown by `/edit-log`. Never stores a path or file name. |
 | [reaction-ledger](reaction-ledger/README.md) | Local ledger of the emoji reactions people leave on messages in your Telegram chats with Hermes: which emoji, on how many messages, in how many chats and how recently, shown by `/reaction-log`. |
 | [unicode-ref](unicode-ref/README.md) | `@unicode:` references that spell text out character by character for the model: code points, Unicode names, and notes on invisible characters, text-direction controls, unusual spaces and lookalike letters. |
+| [timestamp-ref](timestamp-ref/README.md) | `@ts:` references that turn Unix timestamps and written dates into readable times for the model: UTC, local time, ISO 8601, weekday, how long ago, and the same moment in seconds, milliseconds and microseconds. |
 
 MIT licensed.

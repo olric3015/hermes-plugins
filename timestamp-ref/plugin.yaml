@@ -1,0 +1,5 @@
+name: timestamp-ref
+version: 1.0.0
+description: "@ts: references that turn Unix timestamps and written dates into readable times for the model: UTC, local time, ISO 8601, weekday, how long ago, and the same moment in seconds, milliseconds and microseconds."
+author: olric3015
+requires_hermes: ">=0.21.5"

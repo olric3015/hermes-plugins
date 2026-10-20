@@ -59,6 +59,7 @@ jobs:
           .venv/bin/python -m hermes_cli.main plugins validate "$GITHUB_WORKSPACE/edit-ledger"
           .venv/bin/python -m hermes_cli.main plugins validate "$GITHUB_WORKSPACE/reaction-ledger"
           .venv/bin/python -m hermes_cli.main plugins validate "$GITHUB_WORKSPACE/unicode-ref"
+          .venv/bin/python -m hermes_cli.main plugins validate "$GITHUB_WORKSPACE/timestamp-ref"
       - name: End to end (aux-ledger)
         env:
           PYTHONPATH: ${{ github.workspace }}/hermes
@@ -103,6 +104,10 @@ jobs:
         env:
           PYTHONPATH: ${{ github.workspace }}/hermes
         run: hermes/.venv/bin/python tests/e2e/unicode_ref_e2e.py
+      - name: End to end (timestamp-ref)
+        env:
+          PYTHONPATH: ${{ github.workspace }}/hermes
+        run: hermes/.venv/bin/python tests/e2e/timestamp_ref_e2e.py
 
   # wait-ledger needs the human-input hooks, first released in Hermes 0.21.6.
   wait-ledger:

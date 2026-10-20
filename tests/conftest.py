@@ -139,3 +139,13 @@ def unicode_plugin():
 @pytest.fixture
 def uchars(unicode_plugin):
     return unicode_plugin.chars
+
+
+@pytest.fixture
+def ts_plugin():
+    return _load_plugin("timestamp-ref")
+
+
+@pytest.fixture
+def stamps(ts_plugin):
+    return ts_plugin.stamps

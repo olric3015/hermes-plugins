@@ -18,5 +18,6 @@ plugin with its own README.
 | [reaction-ledger](reaction-ledger/README.md) | Local ledger of the emoji reactions people leave on messages in your Telegram chats with Hermes: which emoji, on how many messages, in how many chats and how recently, shown by `/reaction-log`. |
 | [unicode-ref](unicode-ref/README.md) | `@unicode:` references that spell text out character by character for the model: code points, Unicode names, and notes on invisible characters, text-direction controls, unusual spaces and lookalike letters. |
 | [timestamp-ref](timestamp-ref/README.md) | `@ts:` references that turn Unix timestamps and written dates into readable times for the model: UTC, local time, ISO 8601, weekday, how long ago, and the same moment in seconds, milliseconds and microseconds. |
+| [jwt-ref](jwt-ref/README.md) | `@jwt:` references that decode a JSON Web Token for the model: header, claims, expiry and issue times in UTC with how long ago, and warnings such as `alg: none`. Signatures are never verified. |
 
 MIT licensed.

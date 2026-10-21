@@ -149,3 +149,13 @@ def ts_plugin():
 @pytest.fixture
 def stamps(ts_plugin):
     return ts_plugin.stamps
+
+
+@pytest.fixture
+def jwt_plugin():
+    return _load_plugin("jwt-ref")
+
+
+@pytest.fixture
+def jwtok(jwt_plugin):
+    return jwt_plugin.tokens

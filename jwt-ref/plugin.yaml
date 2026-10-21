@@ -1,0 +1,5 @@
+name: jwt-ref
+version: 1.0.0
+description: "@jwt: references that decode a JSON Web Token for the model: header, claims, expiry and issue times in UTC with how long ago, and warnings such as alg none. Signatures are never verified."
+author: olric3015
+requires_hermes: ">=0.21.5"

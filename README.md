@@ -19,5 +19,6 @@ plugin with its own README.
 | [unicode-ref](unicode-ref/README.md) | `@unicode:` references that spell text out character by character for the model: code points, Unicode names, and notes on invisible characters, text-direction controls, unusual spaces and lookalike letters. |
 | [timestamp-ref](timestamp-ref/README.md) | `@ts:` references that turn Unix timestamps and written dates into readable times for the model: UTC, local time, ISO 8601, weekday, how long ago, and the same moment in seconds, milliseconds and microseconds. |
 | [jwt-ref](jwt-ref/README.md) | `@jwt:` references that decode a JSON Web Token for the model: header, claims, expiry and issue times in UTC with how long ago, and warnings such as `alg: none`. Signatures are never verified. |
+| [crontab-ref](crontab-ref/README.md) | `@crontab:` references that explain a cron expression for the model: what it means in words, field by field, whether Hermes's `/cron` accepts it, and its next runs in Hermes's timezone, read by croniter like Hermes's own scheduler. |
 
 MIT licensed.

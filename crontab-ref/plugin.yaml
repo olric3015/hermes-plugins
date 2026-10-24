@@ -1,0 +1,5 @@
+name: crontab-ref
+version: 1.0.0
+description: "@crontab: references that explain a cron expression for the model: what it means in words, field by field, whether Hermes's /cron accepts it, and its next runs in Hermes's timezone, read by croniter like Hermes's own scheduler."
+author: olric3015
+requires_hermes: ">=0.21.5"

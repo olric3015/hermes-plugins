@@ -159,3 +159,13 @@ def jwt_plugin():
 @pytest.fixture
 def jwtok(jwt_plugin):
     return jwt_plugin.tokens
+
+
+@pytest.fixture
+def crontab_plugin():
+    return _load_plugin("crontab-ref")
+
+
+@pytest.fixture
+def crons(crontab_plugin):
+    return crontab_plugin.crons

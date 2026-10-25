@@ -169,3 +169,13 @@ def crontab_plugin():
 @pytest.fixture
 def crons(crontab_plugin):
     return crontab_plugin.crons
+
+
+@pytest.fixture
+def b64_plugin():
+    return _load_plugin("b64-ref")
+
+
+@pytest.fixture
+def blobs(b64_plugin):
+    return b64_plugin.blobs

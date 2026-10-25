@@ -20,5 +20,6 @@ plugin with its own README.
 | [timestamp-ref](timestamp-ref/README.md) | `@ts:` references that turn Unix timestamps and written dates into readable times for the model: UTC, local time, ISO 8601, weekday, how long ago, and the same moment in seconds, milliseconds and microseconds. |
 | [jwt-ref](jwt-ref/README.md) | `@jwt:` references that decode a JSON Web Token for the model: header, claims, expiry and issue times in UTC with how long ago, and warnings such as `alg: none`. Signatures are never verified. |
 | [crontab-ref](crontab-ref/README.md) | `@crontab:` references that explain a cron expression for the model: what it means in words, field by field, whether Hermes's `/cron` accepts it, and its next runs in Hermes's timezone, read by croniter like Hermes's own scheduler. |
+| [b64-ref](b64-ref/README.md) | `@b64:` references that decode base64, base64url, hex and percent-encoded text for the model: text as text, JSON pretty-printed, gzip inflated, and binary named by its format with a hex dump of its first bytes. |
 
 MIT licensed.

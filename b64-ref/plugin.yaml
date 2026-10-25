@@ -1,0 +1,5 @@
+name: b64-ref
+version: 1.0.0
+description: "@b64: references that decode base64, base64url, hex and percent-encoded text for the model: text as text, JSON pretty-printed, gzip inflated, and binary named by its format with a hex dump of its first bytes."
+author: olric3015
+requires_hermes: ">=0.21.5"

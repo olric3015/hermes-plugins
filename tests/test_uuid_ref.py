@@ -328,8 +328,11 @@ def test_v1_fields_agree_with_the_standard_library(uids):
         assert uids.gregorian_ticks(value) == stdlib.time
         assert uids.clock_seq(value) == stdlib.clock_seq
         assert uids.node(value) == stdlib.node
-    made = uuid.uuid1()
+    # A system libuuid makes uuid1() on Linux with its own clock (2 hours ahead on a CI runner);
+    # giving node and clock_seq makes Python build it from time.time_ns() on every platform.
+    made = uuid.uuid1(node=0x010203040506, clock_seq=1)
     assert uids.gregorian_ticks(made.int) == made.time
+    assert uids.node(made.int) == 0x010203040506 and uids.clock_seq(made.int) == 1
     seconds = uids.created(uids.read(str(made)))
     assert abs(float(seconds) - __import__("time").time()) < 60
 

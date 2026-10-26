@@ -179,3 +179,13 @@ def b64_plugin():
 @pytest.fixture
 def blobs(b64_plugin):
     return b64_plugin.blobs
+
+
+@pytest.fixture
+def uuid_plugin():
+    return _load_plugin("uuid-ref")
+
+
+@pytest.fixture
+def uids(uuid_plugin):
+    return uuid_plugin.ids

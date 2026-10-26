@@ -1,0 +1,5 @@
+name: uuid-ref
+version: 1.0.0
+description: "@uuid: references that decode a UUID or ULID for the model: version and variant in words, the creation time a v1, v6, v7 or ULID carries, and whether a v1 node is a real network card address."
+author: olric3015
+requires_hermes: ">=0.21.5"

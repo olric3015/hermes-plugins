@@ -63,6 +63,7 @@ jobs:
           .venv/bin/python -m hermes_cli.main plugins validate "$GITHUB_WORKSPACE/jwt-ref"
           .venv/bin/python -m hermes_cli.main plugins validate "$GITHUB_WORKSPACE/crontab-ref"
           .venv/bin/python -m hermes_cli.main plugins validate "$GITHUB_WORKSPACE/b64-ref"
+          .venv/bin/python -m hermes_cli.main plugins validate "$GITHUB_WORKSPACE/uuid-ref"
       - name: End to end (aux-ledger)
         env:
           PYTHONPATH: ${{ github.workspace }}/hermes
@@ -123,6 +124,10 @@ jobs:
         env:
           PYTHONPATH: ${{ github.workspace }}/hermes
         run: hermes/.venv/bin/python tests/e2e/b64_ref_e2e.py
+      - name: End to end (uuid-ref)
+        env:
+          PYTHONPATH: ${{ github.workspace }}/hermes
+        run: hermes/.venv/bin/python tests/e2e/uuid_ref_e2e.py
 
   # wait-ledger needs the human-input hooks, first released in Hermes 0.21.6.
   wait-ledger:

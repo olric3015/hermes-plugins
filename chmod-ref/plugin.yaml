@@ -1,0 +1,5 @@
+name: chmod-ref
+version: 1.0.0
+description: "@chmod: references that explain a file permission mode for the model: octal and ls -l forms, each class's rights in words, setuid, setgid and sticky, what a chmod change like u+x,go-w does to a mode, and what a umask gives new files."
+author: olric3015
+requires_hermes: ">=0.21.7"

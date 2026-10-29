@@ -22,5 +22,6 @@ plugin with its own README.
 | [crontab-ref](crontab-ref/README.md) | `@crontab:` references that explain a cron expression for the model: what it means in words, field by field, whether Hermes's `/cron` accepts it, and its next runs in Hermes's timezone, read by croniter like Hermes's own scheduler. |
 | [b64-ref](b64-ref/README.md) | `@b64:` references that decode base64, base64url, hex and percent-encoded text for the model: text as text, JSON pretty-printed, gzip inflated, and binary named by its format with a hex dump of its first bytes. |
 | [uuid-ref](uuid-ref/README.md) | `@uuid:` references that decode a UUID or ULID for the model: version and variant in words, the creation time a v1, v6, v7 or ULID carries, and whether a v1 node is a real network card address. |
+| [chmod-ref](chmod-ref/README.md) | `@chmod:` references that explain a file permission mode for the model: octal and ls -l forms, each class's rights in words, setuid, setgid and sticky, what a chmod change like u+x,go-w does to a mode, and what a umask gives new files. |
 
 MIT licensed.

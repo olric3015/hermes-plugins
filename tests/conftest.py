@@ -189,3 +189,13 @@ def uuid_plugin():
 @pytest.fixture
 def uids(uuid_plugin):
     return uuid_plugin.ids
+
+
+@pytest.fixture
+def chmod_plugin():
+    return _load_plugin("chmod-ref")
+
+
+@pytest.fixture
+def cmodes(chmod_plugin):
+    return chmod_plugin.modes
